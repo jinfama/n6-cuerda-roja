@@ -1,0 +1,236 @@
+{
+  "$schema_note": "Manifest provisional escrito desde PLAN.md el 2026-05-16. Será reemplazado por manifest.json oficial generado por el pipeline R en 05_projects/labour/code/04_labour_synthesis/. Cuando llegue el oficial, hacer diff y ajustar consumidores.",
+  "version": "0.1.0-provisional",
+  "generated_at": "2026-05-16",
+  "source_project": "05_projects/labour",
+  "source_pipeline": "M04 synthesis (post fix usd_VA_per_worker audit 2026-05-16)",
+  "world_2021_kpis": {
+    "workers_millions": 732,
+    "hours_billions": 1242,
+    "child_labor_pct": 7.09,
+    "forced_labor_pct": 0.70
+  },
+  "canonical_window": {
+    "footprint": [1961, 2021],
+    "conditions": [1990, 2024],
+    "project_master_plan": [1962, 2024]
+  },
+  "known_caveats": [
+    {
+      "id": "break_1989_1990",
+      "label_es": "Cambio metodológico 1989/1990",
+      "label_en": "1989/1990 methodological break",
+      "description": "Doble bug corregido pero la transición histórico/contemporáneo deja un escalón visible. Marcar con línea vertical punteada + tooltip en todas las series temporales.",
+      "render_hint": "vertical_line_dashed"
+    },
+    {
+      "id": "post_2021_physical_gap",
+      "label_es": "Sin datos físicos 2022–2024",
+      "label_en": "No physical data 2022–2024",
+      "description": "2022–2024 sólo poblado en condiciones laborales, no en huella física. Atenuar/ocultar en mapa de Secciones 1–2 cuando year > 2021.",
+      "render_hint": "fade_or_hide_when_year_gt_2021"
+    },
+    {
+      "id": "dtm_items_na",
+      "label_es": "Items DTM sin item_code_cbs",
+      "label_en": "DTM items without item_code_cbs",
+      "description": "3 items sin item_code_cbs (~2.46 % del valor) — huecos NA en algunas intensidades. Mostrar nota en leyenda cuando aplique.",
+      "render_hint": "legend_note"
+    },
+    {
+      "id": "forced_labor_no_year",
+      "label_es": "GSI sin dimensión año",
+      "label_en": "GSI has no year dimension",
+      "description": "forced_labor_rates.csv es producto×país estático (Global Slavery Index snapshot). Presentar como capa de riesgo, NO serie temporal.",
+      "render_hint": "static_risk_layer"
+    }
+  ],
+  "datasets": {
+    "regions": {
+      "id": "C1",
+      "file": "data/regions.json",
+      "source_csv": "data/output_final/labour_synthesis/labour_synthesis_regions.csv",
+      "granularity": "region_un × year",
+      "rows": 366,
+      "year_range": [1961, 2021],
+      "geo": "6 regiones UN: Africa, Americas, Asia, Europe, Oceania, World",
+      "indicators": "32 (ver lista común)",
+      "used_in": ["#dashboard"]
+    },
+    "regions_labor": {
+      "id": "C2",
+      "file": "data/regions_labor.json",
+      "source_csv": "data/output_final/labour_synthesis/labour_synthesis_regions_labor.csv",
+      "granularity": "region_labor × year",
+      "rows": 854,
+      "year_range": [1961, 2021],
+      "geo": "14 regiones laborales (East Asia, South Asia, South-East Asia, MENA, Sub-Saharan Africa, …)",
+      "indicators": "32",
+      "used_in": ["#dashboard"]
+    },
+    "regions_categories": {
+      "id": "C3",
+      "file": "data/regions_categories.json",
+      "source_csv": "data/output_final/labour_synthesis/labour_synthesis_regions_categories.csv",
+      "granularity": "region_un × category × year",
+      "rows": 9756,
+      "year_range": [1961, 2021],
+      "indicators": "35",
+      "used_in": ["#dashboard", "#workers"]
+    },
+    "countries_categories": {
+      "id": "C4",
+      "file": "data/countries_categories.json",
+      "source_csv": "data/output_final/labour_synthesis/labour_synthesis_categories.csv",
+      "granularity": "iso3 × category × year",
+      "rows": 206516,
+      "year_range": [1961, 2021],
+      "countries": 186,
+      "indicators": "41",
+      "used_in": ["#workers", "#footprints"],
+      "loading_strategy": "lazy"
+    },
+    "countries_items": {
+      "id": "C5",
+      "file": "data/items/{iso3}.json",
+      "source_csv": "data/output_final/labour_synthesis/labour_synthesis_items.csv",
+      "granularity": "iso3 × item_primary × year",
+      "rows": 604014,
+      "year_range": [1961, 2021],
+      "countries": 186,
+      "indicators": "34",
+      "used_in": ["#workers"],
+      "loading_strategy": "lazy_per_country",
+      "partition_note": "Se particiona en 186 ficheros por iso3 para evitar payload > 5 MB"
+    },
+    "conditions": {
+      "id": "M02-full",
+      "file": "data/conditions.json",
+      "source_csv": "data/output_final/labour_conditions/social_impact_full.csv",
+      "granularity": "iso3 × year",
+      "year_range": [1990, 2024],
+      "countries": 199,
+      "key_indicators": ["wage_usd_ppp", "va_per_worker", "sp_covered_pct", "child_labor_pct", "is_below_poverty", "wage_poverty_gap_pct"],
+      "used_in": ["#conditions"]
+    },
+    "forced_labor_risk": {
+      "id": "GSI",
+      "file": "data/forced_labor_risk.json",
+      "source_csv": "data/output_final/labour_conditions/forced_labor_rates.csv",
+      "granularity": "iso3 × product (NO YEAR)",
+      "rows_approx": 35820,
+      "key_indicators": ["risk_level", "forced_labor_pct", "risk_weight"],
+      "used_in": ["#conditions"],
+      "render_warning": "Capa de riesgo estática (snapshot Global Slavery Index)"
+    },
+    "footprints": {
+      "id": "M03-fp",
+      "file": "data/footprints.json",
+      "source_csv": "data/output_final/labor_footprint/labor_footprint_conditions.csv",
+      "granularity": "iso3 × item × year",
+      "rows": 604014,
+      "year_range": [1961, 2021],
+      "key_indicators": ["h_FU_final", "hours_total", "pct_child_labor", "pct_forced_labor", "hours_child_labor", "hours_forced_labor"],
+      "used_in": ["#footprints"],
+      "loading_strategy": "lazy_per_country"
+    },
+    "trade_bilateral": {
+      "id": "M03-trade",
+      "file": "data/trade_bilateral.json",
+      "source_csv": "PENDING — localizar dentro de code/03_labour_trade_footprint/ outputs",
+      "granularity": "exporter × importer × year × item",
+      "status": "BLOCKED",
+      "used_in": ["#trade"]
+    }
+  },
+  "indicators_common": {
+    "id_columns": ["year", "iso3", "country", "region_un", "region_un_sub", "region_labor", "area_code", "category_labor", "item_primary", "is_livestock", "n_countries", "n_items"],
+    "physical": [
+      {"key": "area_harvested", "unit": "ha", "label_es": "Superficie cosechada", "label_en": "Area harvested"},
+      {"key": "area_ha", "unit": "ha", "label_es": "Superficie", "label_en": "Area"},
+      {"key": "livestock_units", "unit": "LU", "label_es": "Unidades de ganado", "label_en": "Livestock units"},
+      {"key": "production_tonnes", "unit": "t", "label_es": "Producción", "label_en": "Production"},
+      {"key": "production_GJ", "unit": "GJ", "label_es": "Producción energética", "label_en": "Energy production"},
+      {"key": "workers", "unit": "personas", "label_es": "Trabajadores", "label_en": "Workers"},
+      {"key": "hours_total", "unit": "h/año", "label_es": "Horas totales", "label_en": "Total hours"}
+    ],
+    "intensities": [
+      {"key": "h_per_FU", "unit": "h/FU", "label_es": "Horas por unidad funcional"},
+      {"key": "h_per_ha", "unit": "h/ha", "label_es": "Horas por hectárea"},
+      {"key": "h_per_LU", "unit": "h/LU", "label_es": "Horas por unidad ganadera"},
+      {"key": "h_per_tonne", "unit": "h/t", "label_es": "Horas por tonelada"},
+      {"key": "h_per_GJ", "unit": "h/GJ", "label_es": "Horas por gigajulio"}
+    ],
+    "productivity": [
+      {"key": "tonnes_per_worker", "unit": "t/trabajador"},
+      {"key": "GJ_per_worker", "unit": "GJ/trabajador"},
+      {"key": "hours_per_worker", "unit": "h/trabajador"}
+    ],
+    "wages": [
+      {"key": "monthly_wage", "unit": "USD-PPP/mes", "label_es": "Salario mensual"},
+      {"key": "va_per_worker", "unit": "USD/trabajador", "label_es": "Valor añadido por trabajador"}
+    ],
+    "conditions_pct": [
+      {"key": "pct_extreme_poverty", "unit": "%", "threshold": "<$2.15/día"},
+      {"key": "pct_lmic_poverty", "unit": "%", "threshold": "<$3.65/día"},
+      {"key": "pct_umic_poverty", "unit": "%", "threshold": "<$6.85/día"},
+      {"key": "pct_not_covered", "unit": "%", "label_es": "Sin protección social"},
+      {"key": "pct_child_labor", "unit": "%", "label_es": "Trabajo infantil"},
+      {"key": "pct_forced_labor", "unit": "%", "label_es": "Trabajo forzoso"}
+    ],
+    "conditions_hours": [
+      {"key": "hours_extreme_poverty", "unit": "h"},
+      {"key": "hours_lmic_poverty", "unit": "h"},
+      {"key": "hours_umic_poverty", "unit": "h"},
+      {"key": "hours_not_covered", "unit": "h"},
+      {"key": "hours_child_labor", "unit": "h"},
+      {"key": "hours_forced_labor", "unit": "h"}
+    ],
+    "quality": [
+      {"key": "confidence_mean", "unit": "0–1", "label_es": "Confianza media"},
+      {"key": "pct_hours_observed", "unit": "%", "label_es": "% horas observadas"},
+      {"key": "method_final", "values": ["observed", "imputed", "historical_extension"], "label_es": "Método final"}
+    ]
+  },
+  "categories_labor": {
+    "count": 27,
+    "groups": {
+      "cereals": ["Cereals", "Rice"],
+      "permanent_crops": ["Fruit_tree", "Grapes", "Treenuts", "Berries", "Coffee_Cocoa_Tea", "Rubber"],
+      "annual_crops": ["Vegetables", "Oil_Crops_annual", "Oil_Crops_permanent", "Pulses", "Roots and Tubers", "Sugar Crops Primary", "Tobacco", "Fibre Crops Primary"],
+      "livestock": ["Cattle_dairy", "Cattle_meat", "Chickens_layers", "Chickens_meat", "Sheep_goats", "Pigs", "Equinos", "Other_animals"],
+      "other": ["Crop_others"]
+    },
+    "color_palette_hint": "Una cualitativa 12-color basada en grupos: cereales (dorado), permanent crops (verde oliva), annual crops (verde hoja), livestock (sienna), other (gris)."
+  },
+  "regions_un_6": ["Africa", "Americas", "Asia", "Europe", "Oceania", "World"],
+  "regions_labor_14_hint": [
+    "East Asia", "South Asia", "South-East Asia", "Central Asia",
+    "Western Asia / MENA", "Sub-Saharan Africa", "Northern Africa",
+    "Northern America", "Latin America & Caribbean",
+    "Western Europe", "Eastern Europe", "Northern Europe", "Southern Europe",
+    "Oceania"
+  ],
+  "color_palettes": {
+    "workers_hours": {"type": "sequential", "from": "#fbf3e3", "to": "#c93324", "steps": 7},
+    "wages": {"type": "sequential", "from": "#f0f4e8", "to": "#2d5a1f", "steps": 7},
+    "child_forced": {"type": "sequential", "from": "#fef0eb", "to": "#6b0f0a", "steps": 7},
+    "intensities": {"type": "sequential_diverging", "neutral": "#f0e9d8", "low": "#3a6ea5", "high": "#c93324", "steps": 9}
+  },
+  "i18n_keys_hero": {
+    "es": {
+      "eyebrow": "Agricultural",
+      "title": "Workers of the World",
+      "subtitle": "Base de datos global sobre el trabajo agrario en perspectiva de largo plazo",
+      "year_range_label": "1961–2024",
+      "cta": "Explorar →"
+    },
+    "en": {
+      "eyebrow": "Agricultural",
+      "title": "Workers of the World",
+      "subtitle": "A global database on agricultural labour in long-term perspective",
+      "year_range_label": "1961–2024",
+      "cta": "Explore →"
+    }
+  }
+}

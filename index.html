@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<title>Agricultores del Mundo</title>
+<meta name="description" content="Base de datos global sobre el trabajo agrario en perspectiva histórica.">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%23213033'/%3E%3Cpath d='M12 4v15M7.2 9.2 12 6.8l4.8 2.4M8 13.1l4-2 4 2M8.8 17l3.2-1.6 3.2 1.6' stroke='%238DBBC8' stroke-width='1.7' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M6.2 19.6h11.6' stroke='%23F7F9F8' stroke-width='1.3' stroke-linecap='round' opacity='.72'/%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Newsreader:opsz,wght@6..72,500;6..72,650&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css?v=20260522-icons2">
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160/build/three.module.js" } }
+</script>
+</head>
+<body>
+
+<!-- ============================================================
+     LANDING — globo Three.js + título + CTA
+     ============================================================ -->
+<div class="landing" id="landing">
+  <canvas class="landing-globe" id="landing-globe"></canvas>
+  <div class="landing-cursor-light" id="landing-cursor-light" aria-hidden="true"></div>
+
+  <nav class="landing-lang" id="landing-lang">
+    <button data-lang="es" class="active">ES</button>
+    <span class="sep">·</span>
+    <button data-lang="en">EN</button>
+  </nav>
+
+  <div class="landing-content" id="landing-content">
+    <div class="landing-eyebrow" data-i18n="landing.eyebrow"></div>
+    <h1 class="landing-title" data-i18n="landing.title"><span>Agricultores</span><span>del Mundo</span></h1>
+    <div class="landing-rule"></div>
+    <p class="landing-subtitle" data-i18n="landing.subtitle">
+      Base de datos global sobre el trabajo agrario en perspectiva histórica
+    </p>
+    <button class="landing-cta" id="landing-cta">
+      <span data-i18n="landing.cta">Explorar</span>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5v10z" fill="currentColor"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- ============================================================
+     APP — sidebar + main (query bar + viz + timeline) + right panel
+     ============================================================ -->
+<div id="app" class="hidden">
+
+  <!-- LEFT SIDEBAR: categorías de indicadores -->
+  <nav class="sidebar">
+    <div class="sb-brand" title="Workers of the World">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 4v15M7.2 9.2 12 6.8l4.8 2.4M8 13.1l4-2 4 2M8.8 17l3.2-1.6 3.2 1.6" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M6.2 20h11.6" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" opacity=".72"/>
+      </svg>
+    </div>
+    <div class="sb-categories" id="sidebar"></div>
+    <button class="sb-info-btn" id="btn-info" title="Acerca de">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+    </button>
+  </nav>
+
+  <!-- MAIN AREA -->
+  <div class="main">
+
+    <!-- QUERY BAR: reads like a sentence -->
+    <div class="query-bar">
+      <div class="query-segment">
+        <button class="query-btn query-cat-btn" id="query-cat" title="Categoría">
+          <span id="query-cat-label">Trabajo agrario</span>
+          <svg class="query-chevron" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+        </button>
+        <div class="query-dropdown" id="query-cat-dropdown"></div>
+      </div>
+      <span class="query-sep">/</span>
+      <div class="query-segment">
+        <button class="query-btn query-ind-btn" id="query-ind" title="Indicador">
+          <span id="query-ind-label">Trabajadores</span>
+          <svg class="query-chevron" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+        </button>
+        <div class="query-dropdown" id="query-ind-dropdown"></div>
+      </div>
+      <button class="indicator-info-btn" id="indicator-info-btn" type="button" aria-label="Información del indicador" data-info="" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M12 10v7M12 7h.01" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <div class="indicator-info-popover" id="indicator-info-popover" role="status" hidden></div>
+      <!-- View switcher -->
+      <div class="view-switcher" id="view-switcher">
+        <button class="vw-btn active" data-view="map" title="Mapa" aria-label="Mapa">
+          <svg class="vw-world-map" viewBox="0 0 24 24" aria-hidden="true">
+            <path class="vw-world-frame" d="M3.5 6.6c2.8-1.15 5.6-1.15 8.4 0 2.9 1.2 5.8 1.2 8.6 0v10.8c-2.8 1.15-5.7 1.15-8.6 0-2.8-1.15-5.6-1.15-8.4 0V6.6Z"/>
+            <path class="vw-world-fold" d="M8.8 5.5v12.8M15.2 6.7v11.8"/>
+            <path class="vw-world-land" d="M6.2 8.3c1.2-.45 2.3-.28 3.05.25.45.32.28.86-.27 1.02l-.96.25.36 1.05-.84.52-1.26-.72-.58-1.05.5-1.32Z"/>
+            <path class="vw-world-land" d="M12.35 8.35l1.9.42.82 1.05-.64 1.02-1.45-.18-.92 1.22-1.12-.55.34-1.62 1.07-1.36Z"/>
+            <path class="vw-world-land" d="M17.2 12.55l1.28.48.42 1.44-1.02.98-1.32-.55-.24-1.22.88-1.13Z"/>
+          </svg>
+        </button>
+        <button class="vw-btn" data-view="trend" title="Evolución" aria-label="Evolución">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path class="vw-trend-axis" d="M4.2 18.2h15.8M4.2 18.2V6.2"/>
+            <path class="vw-trend-line" d="M6.9 15.1l3.15-3.75 3.35 2.35 4.65-6.25"/>
+            <circle class="vw-trend-dot" cx="6.9" cy="15.1" r=".72"/><circle class="vw-trend-dot" cx="10.05" cy="11.35" r=".72"/><circle class="vw-trend-dot" cx="13.4" cy="13.7" r=".72"/><circle class="vw-trend-dot" cx="18.05" cy="7.45" r=".72"/>
+          </svg>
+        </button>
+        <button class="vw-btn" data-view="ranking" title="Ranking" aria-label="Ranking">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 7.2h3.2M5 12h6.2M5 16.8h9.8"/>
+            <path d="M11 7.2h8M14 12h5M17.6 16.8H19"/>
+          </svg>
+        </button>
+        <button class="vw-btn" data-view="treemap" title="Composición" aria-label="Composición">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4.2 4.2h7.1v6.2H4.2zM12.7 4.2h7.1v11.2h-7.1zM4.2 11.7h7.1v8.1H4.2zM12.7 16.8h7.1v3h-7.1z"/>
+          </svg>
+        </button>
+        <button class="vw-btn" data-view="table" title="Tabla" aria-label="Tabla">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4.2 5.2h15.6v13.6H4.2z"/>
+            <path d="M4.2 9.6h15.6M4.2 14h15.6M9.3 5.2v13.6M14.7 5.2v13.6"/>
+          </svg>
+        </button>
+      </div>
+      <div class="selection-bar" id="selection-bar"></div>
+      <div class="query-spacer"></div>
+      <button class="panel-toggle-btn" id="btn-toggle-panel" type="button" title="Mostrar/ocultar opciones" aria-label="Mostrar/ocultar opciones">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path class="panel-settings-core" d="M12 15.35a3.35 3.35 0 1 0 0-6.7 3.35 3.35 0 0 0 0 6.7Z"/>
+          <path class="panel-settings-spokes" d="M12 3.2v2.2M12 18.6v2.2M5.8 5.8l1.56 1.56M16.64 16.64l1.56 1.56M3.2 12h2.2M18.6 12h2.2M5.8 18.2l1.56-1.56M16.64 7.36l1.56-1.56"/>
+        </svg>
+      </button>
+
+    </div>
+
+    <!-- VIZ CONTAINER -->
+    <div class="viz-container">
+      <div class="viz-panel active" id="panel-map">
+        <div class="map-container" id="map-container">
+          <div class="map-year" id="map-year">2020</div>
+          <svg class="map-svg" id="map-svg"></svg>
+          <div class="map-legend" id="map-legend"></div>
+          <div class="map-tooltip" id="map-tooltip"></div>
+        </div>
+      </div>
+      <div class="viz-panel" id="panel-trend">
+        <div class="chart-container">
+          <svg class="chart-svg" id="trend-svg"></svg>
+          <div class="chart-empty" id="trend-empty">Selecciona uno o más países para ver la evolución</div>
+        </div>
+      </div>
+      <div class="viz-panel" id="panel-ranking">
+        <div class="ranking-container" id="ranking-container"></div>
+      </div>
+      <div class="viz-panel" id="panel-treemap">
+        <div class="treemap-container">
+          <div class="treemap-header" id="treemap-header">Selecciona un país para ver la composición por categoría</div>
+          <div class="treemap-chart" id="treemap-chart"></div>
+        </div>
+      </div>
+      <div class="viz-panel" id="panel-table">
+        <div class="table-container" id="table-container"></div>
+      </div>
+      <div class="viz-panel" id="panel-country">
+        <div class="country-panel-container" id="country-panel-container"></div>
+      </div>
+      <div class="viz-panel" id="panel-about">
+        <div class="about-container" id="about-container"></div>
+      </div>
+    </div>
+
+    <!-- TIMELINE: slider con play -->
+    <div class="timeline">
+      <button class="tl-play" id="tl-play" title="Reproducir/Pausa">
+        <svg viewBox="0 0 24 24" id="tl-play-icon"><path d="M8 5v14l11-7z"/></svg>
+      </button>
+      <button class="tl-speed" id="tl-speed" title="Velocidad">2x</button>
+      <div class="tl-track" id="tl-track">
+        <div class="tl-rail"></div>
+        <div class="tl-range-fill" id="tl-range-fill"></div>
+        <div class="tl-handle" id="tl-handle-from">
+          <div class="tl-handle-label" id="tl-label-from">1962</div>
+        </div>
+        <div class="tl-handle" id="tl-handle-to">
+          <div class="tl-handle-label" id="tl-label-to">2021</div>
+        </div>
+        <div class="tl-current-handle" id="tl-handle-current" title="Año activo"></div>
+      </div>
+      <input class="tl-year-input tl-year-current-input" id="tl-year-current" type="number" min="1962" max="2021" value="2020" title="Año activo">
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+      <span id="footer-source">Fuente: FAO · ILO · World Bank · GSI · pipeline labour (Infante-Amate, UGR)</span>
+      <div class="footer-actions">
+        <button class="footer-btn" id="btn-csv" title="Descargar datos del panel actual">Descargar</button>
+        <button class="footer-btn" id="btn-fs" title="Pantalla completa">Pantalla completa</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL: opciones / categorías de cultivo / territorios -->
+  <aside class="right-panel" id="right-panel">
+    <button class="right-panel-close" id="right-panel-close" type="button" aria-label="Cerrar opciones">
+      <span>Opciones</span>
+      <strong>Cerrar</strong>
+    </button>
+    <div class="rp-section">
+      <button class="rp-section-header" type="button">OPCIONES</button>
+      <div class="rp-section-body" id="rp-options-body"></div>
+    </div>
+    <div class="rp-section">
+      <button class="rp-section-header" type="button">CATEGORÍAS DE CULTIVO</button>
+      <div class="rp-section-body rp-scrollable" id="rp-crop-body">
+        <div class="rp-search"><input type="text" id="rp-crop-search" placeholder="Buscar categoría..."></div>
+        <div id="rp-crop-list"></div>
+      </div>
+    </div>
+    <div class="rp-section" style="flex:1; min-height: 0;">
+      <button class="rp-section-header" type="button">PAÍSES</button>
+      <div class="rp-section-body rp-scrollable" id="rp-territories-body">
+        <div class="rp-search"><input type="text" id="rp-territory-search" placeholder="Buscar país..."></div>
+        <div id="rp-territory-list"></div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script type="module" src="js/app.js?v=20260522-icons2"></script>
+</body>
+</html>
+
