@@ -1,8 +1,8 @@
 // Bottom timeline: dual-handle slider + play/pause + speed.
 
-import { State } from './state.js';
-import { getIndicator } from './indicators.js?v=20260522-tildes1';
-import { metricYearRange, resolveMetric } from './metric.js?v=20260522-tildes1';
+import { State } from './state.js?v=20260906f';
+import { getIndicator } from './indicators.js?v=20260906f';
+import { metricYearRange, resolveMetric } from './metric.js?v=20260906f';
 
 let _domainMin = 1962, _domainMax = 2021;
 let _yearFrom = 1962, _yearTo = 2021;
@@ -27,20 +27,28 @@ function activeMetric() {
   return resolveMetric(ind, State.get('language'));
 }
 
+// One place decides where the current-year knob sits, so the value in the state
+// and the control the reader drags can never end up saying different years.
+function positionCurrentHandle(year) {
+  const handleCurrent = el('tl-handle-current');
+  if (!handleCurrent) return;
+  handleCurrent.style.left = `${pctFor(year)}%`;
+  handleCurrent.dataset.year = Math.round(year);
+}
+
 function renderTrack() {
   const handleFrom = el('tl-handle-from');
   const handleTo   = el('tl-handle-to');
-  const handleCurrent = el('tl-handle-current');
   const rangeFill  = el('tl-range-fill');
   const pFrom = pctFor(_yearFrom);
   const pTo   = pctFor(_yearTo);
-  const pCurrent = pctFor(State.get('animationYear') ?? State.get('currentYear'));
   handleFrom.style.left = `${pFrom}%`;
   handleTo.style.left   = `${pTo}%`;
-  if (handleCurrent) {
-    handleCurrent.style.left = `${pCurrent}%`;
-    handleCurrent.dataset.year = Math.round(State.get('animationYear') ?? State.get('currentYear'));
-  }
+  // Outside playback the knob belongs to currentYear: a year restored from a
+  // permalink lives there, while animationYear may still hold the boot default.
+  positionCurrentHandle(State.get('playing')
+    ? (State.get('animationYear') ?? State.get('currentYear'))
+    : State.get('currentYear'));
   rangeFill.style.left  = `${Math.min(pFrom, pTo)}%`;
   rangeFill.style.width = `${Math.abs(pTo - pFrom)}%`;
   el('tl-label-from').textContent = _yearFrom;
@@ -56,6 +64,11 @@ function renderTrack() {
 
 function syncCurrentYearLabels(y) {
   const yy = Math.round(Math.max(_yearFrom, Math.min(_yearTo, y)));
+  // The knob is the control for this value: a year arriving from a permalink, from a
+  // chart click or from a clamp has to move it, not just the number box. Otherwise the
+  // map reads 1975 and the timeline reads 2020 at the same time, and the first touch
+  // on the knob throws away the year the link carried.
+  if (!State.get('playing')) positionCurrentHandle(yy);
   const currentInput = el('tl-year-current');
   if (currentInput) currentInput.value = yy;
   const mapYear = el('map-year');
@@ -72,11 +85,7 @@ function setCurrentYear(y) {
 function syncAnimationYearLabels(y) {
   const yy = Math.max(_yearFrom, Math.min(_yearTo, +y || _yearFrom));
   const rounded = Math.round(yy);
-  const handleCurrent = el('tl-handle-current');
-  if (handleCurrent) {
-    handleCurrent.style.left = `${pctFor(yy)}%`;
-    handleCurrent.dataset.year = rounded;
-  }
+  positionCurrentHandle(yy);
   const currentInput = el('tl-year-current');
   if (currentInput && document.activeElement !== currentInput) currentInput.value = rounded;
   const mapYear = el('map-year');
@@ -120,17 +129,27 @@ function applyMetricRange() {
   const metric = activeMetric();
   const [nextMin, nextMax] = metricYearRange(metric);
   const metricKey = metric ? `${metric.baseId}:${metric.field}` : 'none';
-  const metricChanged = metricKey !== _lastMetricKey;
+  const firstRun = _lastMetricKey === null;
+  // Booting is not a change of variable. Counting it as one snapped the track back to
+  // the full domain and threw away the range a permalink had just restored, so range=
+  // was written into the URL and silently ignored on the way back in.
+  const metricChanged = !firstRun && metricKey !== _lastMetricKey;
   _lastMetricKey = metricKey;
   _domainMin = nextMin;
   _domainMax = nextMax;
+  const [curFrom, curTo] = State.get('yearRange');
+  // On the first run the track has no range of its own yet: the state carries it, and
+  // that is where the URL has just been read into.
+  if (firstRun && Number.isFinite(curFrom) && Number.isFinite(curTo)) {
+    _yearFrom = curFrom;
+    _yearTo = curTo;
+  }
   _yearFrom = Math.max(_domainMin, Math.min(_domainMax, _yearFrom));
   _yearTo = Math.max(_domainMin, Math.min(_domainMax, _yearTo));
   if (_yearFrom > _yearTo) _yearFrom = _yearTo = _domainMin;
 
   // When the previous range was the global default, snap to the variable's real
   // coverage so maps and the x-axis do not imply missing years.
-  const [curFrom, curTo] = State.get('yearRange');
   if (metricChanged || curFrom < _domainMin || curTo > _domainMax || curFrom === 1962 && curTo === 2021) {
     _yearFrom = _domainMin;
     _yearTo = _domainMax;
@@ -263,7 +282,9 @@ export function initTimeline() {
   });
 
   applyMetricRange();
-  setCurrentYear(2020);
+  // Not a hardcoded 2020: the default state already says 2020, and a permalink may have
+  // restored another year before boot. Resetting here threw that year away on reload.
+  setCurrentYear(State.get('currentYear'));
   State.subscribe('currentYear', syncCurrentYearLabels);
   State.subscribe('animationYear', syncAnimationYearLabels);
   State.subscribe('playing', syncPlaying);

@@ -2,7 +2,7 @@
 // It keeps UI labels, units, inverted productivity readings and year ranges
 // consistent across map, trends, ranking, table and options.
 
-import { State } from './state.js';
+import { State } from './state.js?v=20260906f';
 
 export const FUNCTIONAL_UNITS = [
   {

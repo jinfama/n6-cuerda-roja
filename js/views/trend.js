@@ -1,23 +1,28 @@
 // Trend view — line chart of selected countries' indicator over time.
 
-import { State } from '../state.js';
-import { DataLoader } from '../data-loader.js?v=20260522-tildes1';
-import { getIndicator } from '../indicators.js?v=20260522-tildes1';
-import { formatCategoryLabel } from '../labels.js';
-import { metricValue, resolveMetric, selectedFootprintFlows, supportsCropCategory } from '../metric.js?v=20260522-tildes1';
-import { enrichRegionalData } from '../regional-estimates.js?v=20260522-tildes1';
-import { bindSvgTooltip } from '../chart-tooltip.js?v=20260522-hover1';
+import { State } from '../state.js?v=20260906f';
+import { DataLoader } from '../data-loader.js?v=20260906f';
+import { getIndicator } from '../indicators.js?v=20260906f';
+import { formatCategoryLabel } from '../labels.js?v=20260906f';
+import { metricValue, resolveMetric, selectedFootprintFlows, supportsCropCategory } from '../metric.js?v=20260906f';
+import { enrichRegionalData } from '../regional-estimates.js?v=20260906f';
+import { bindSvgTooltip } from '../chart-tooltip.js?v=20260906f';
+import { registerExport } from '../export-csv.js?v=20260906f';
 
 const COLORS = ['#214B52', '#A5534E', '#2F4D63', '#B78B55', '#62735A', '#6F4B8B', '#2D7B7C', '#111827'];
-const INK = '#162123';
-const MUTE = '#87979A';
-const RULE = '#CBD7D8';
-const GRID = '#DFE9E9';
+// Chart chrome (axis ink, muted labels, rules, grid), aligned with the cover
+// tokens in css/styles.css. MUTE used to be #87979A: 2.4:1 on the paper ground.
+// The series palette below (COLORS) is a data encoding and is untouched.
+const INK = '#20211E';
+const MUTE = '#5C5749';
+const RULE = '#C2BBAC';
+const GRID = '#D7CFBD';
 
 let _svg;
 let _aggregates = null;
 let _countryNames = null;
 let _refreshToken = 0;
+let _lastExport = null;   // series currently painted, for the CSV export
 
 export async function initTrendView() {
   _svg = d3.select('#trend-svg');
@@ -91,6 +96,7 @@ async function regionDataset(metric) {
 async function refresh() {
   if (State.get('activeView') !== 'trend') return;
   const token = ++_refreshToken;
+  _lastExport = null;
 
   const ind = getIndicator(State.get('activeCategory'), State.get('activeIndicator'));
   const metric = resolveMetric(ind, State.get('language'));
@@ -116,6 +122,7 @@ async function refresh() {
     }
     return;
   }
+  _lastExport = { allSeries, metric: chartMetric || metric, category };
   drawChart(allSeries, chartMetric || metric, category);
 }
 
@@ -924,3 +931,32 @@ function formatTick(v) {
   return d3.format(',.2~f')(v);
 }
 
+
+// --- CSV export -------------------------------------------------------------
+// Exports every painted point of every painted series, clipped to the year
+// range shown on the timeline.
+registerExport('trend', () => {
+  if (!_lastExport || !_lastExport.allSeries.length) return null;
+  const { allSeries, metric, category } = _lastExport;
+  const lang = State.get('language');
+  const [from, to] = State.get('yearRange') || [-Infinity, Infinity];
+  const rows = [];
+  for (const series of allSeries) {
+    for (const point of series.points || []) {
+      if (point.year < from || point.year > to) continue;
+      rows.push({
+        serie: series.country || series.iso,
+        codigo: series.territoryKey || series.iso,
+        anio: point.year,
+        indicador: series.flowTitle || metric.labelText,
+        valor: point.value,
+        unidad: metric.unit,
+        categoria_cultivo: category
+          ? formatCategoryLabel(category, lang)
+          : (lang === 'en' ? 'all production' : 'toda la produccion'),
+      });
+    }
+  }
+  if (!rows.length) return null;
+  return { rows, indicator: State.get('activeIndicator'), view: 'evolucion' };
+});

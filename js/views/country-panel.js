@@ -1,9 +1,10 @@
 // Country profile view: cross-indicator dashboard for one selected country.
 
-import { State } from '../state.js';
-import { DataLoader } from '../data-loader.js?v=20260522-tildes1';
-import { escapeHtml, formatCategoryLabel, normalizeSearchText } from '../labels.js';
-import { bindSvgTooltip, wireTextTooltips } from '../chart-tooltip.js?v=20260522-hover1';
+import { State } from '../state.js?v=20260906f';
+import { DataLoader } from '../data-loader.js?v=20260906f';
+import { escapeHtml, formatCategoryLabel, normalizeSearchText } from '../labels.js?v=20260906f';
+import { bindSvgTooltip, wireTextTooltips } from '../chart-tooltip.js?v=20260906f';
+import { registerExport } from '../export-csv.js?v=20260906f';
 
 let _root;
 let _token = 0;
@@ -15,6 +16,7 @@ const _globeAnimations = new Map();
 let _countryLabourMode = 'workers';
 let _countrySectorMode = 'absolute';
 let _countryProductivityMode = 'productivity';
+let _lastExport = null;   // profile currently painted, for the CSV export
 
 export function initCountryPanelView() {
   _root = document.getElementById('country-panel-container');
@@ -37,6 +39,7 @@ async function refresh() {
     const [countries] = await Promise.all([loadCountryList(), loadGlobeFeatures()]);
     if (token !== _token) return;
     if (!iso) {
+      _lastExport = null;
       renderSelector(countries, lang);
       return;
     }
@@ -135,6 +138,7 @@ function renderSelector(countries, lang) {
 
 function renderProfile(ctx) {
   const { iso, countryName, year, coreSeries, fpSeries, biCountry, bilateralIndex, categoryRows, countries, lang, globalSeries } = ctx;
+  _lastExport = { iso, countryName, coreSeries, fpSeries };
   const labels = lang === 'en'
     ? {
       profile: 'Country profile',
@@ -957,3 +961,22 @@ function fmt(v) {
   return trimZeros(n.toFixed(1));
 }
 
+
+// --- CSV export -------------------------------------------------------------
+// The country profile is a dashboard of series, so its honest export is the
+// whole annual series of the country on screen, core indicators plus the trade
+// footprint flows, one row per year and field.
+registerExport('country', () => {
+  if (!_lastExport) return null;
+  const { iso, countryName, coreSeries, fpSeries } = _lastExport;
+  const years = new Set([...Object.keys(coreSeries || {}), ...Object.keys(fpSeries || {})]);
+  const rows = [];
+  for (const year of [...years].map(Number).sort((a, b) => a - b)) {
+    const row = { territorio: countryName, codigo: iso, anio: year };
+    Object.entries(coreSeries?.[year] || {}).forEach(([field, value]) => { row[field] = value; });
+    Object.entries(fpSeries?.[year] || {}).forEach(([field, value]) => { row[`fp_${field}`] = value; });
+    if (Object.keys(row).length > 3) rows.push(row);
+  }
+  if (!rows.length) return null;
+  return { rows, indicator: `perfil_${iso}`, view: 'perfil_pais' };
+});

@@ -1,14 +1,16 @@
 // Ranking view — horizontal bars top-N for the active metric at currentYear.
 
-import { State } from '../state.js';
-import { DataLoader } from '../data-loader.js?v=20260522-tildes1';
-import { getIndicator } from '../indicators.js?v=20260522-tildes1';
-import { metricValue, resolveMetric, supportsCropCategory } from '../metric.js?v=20260522-tildes1';
-import { hideChartTooltip, showChartTooltip } from '../chart-tooltip.js?v=20260522-hover1';
+import { State } from '../state.js?v=20260906f';
+import { DataLoader } from '../data-loader.js?v=20260906f';
+import { getIndicator } from '../indicators.js?v=20260906f';
+import { metricValue, resolveMetric, supportsCropCategory } from '../metric.js?v=20260906f';
+import { hideChartTooltip, showChartTooltip } from '../chart-tooltip.js?v=20260906f';
+import { registerExport } from '../export-csv.js?v=20260906f';
 
 let _aggregates = null;
 let _countryNames = null;
 let _refreshToken = 0;
+let _lastExport = null;   // rows currently painted, for the CSV export
 
 export async function initRankingView() {
   try {
@@ -41,6 +43,7 @@ async function activeDataset(ind) {
 
 async function refresh() {
   const token = ++_refreshToken;
+  _lastExport = null;
   const ind = getIndicator(State.get('activeCategory'), State.get('activeIndicator'));
   const metric = resolveMetric(ind, State.get('language'));
   const container = document.getElementById('ranking-container');
@@ -67,6 +70,7 @@ async function refresh() {
   rows.sort((a, b) => b.value - a.value);
 
   const top = rows.slice(0, 40);
+  _lastExport = { top, metric, year };
   const max = top[0] && top[0].value;
   if (!max) {
     container.innerHTML = `<div style="color:var(--c-text-3); padding:24px;">Sin datos para ${year}.</div>`;
@@ -82,7 +86,7 @@ async function refresh() {
       <div class="rk-row" data-iso="${r.iso}" data-rank="${i + 1}" data-country="${r.country}" data-value="${r.value}">
         <div class="rk-rank">${i + 1}</div>
         <div class="rk-name">${r.country} <span style="color:var(--c-text-3); font-size:10px;">${r.iso}</span></div>
-        <div class="rk-bar-wrap"><div class="rk-bar" style="width:${(r.value / max) * 100}%; background:${sel.includes(r.iso) ? '#A5534E' : '#214B52'};"></div></div>
+        <div class="rk-bar-wrap"><div class="rk-bar" style="width:${(r.value / max) * 100}%; background:${sel.includes(r.iso) ? 'var(--c-hot)' : 'var(--c-primary)'};"></div></div>
         <div class="rk-val">${formatVal(r.value)} ${metric.unit}</div>
       </div>
     `).join('')}
@@ -118,3 +122,22 @@ function formatVal(v) {
   return v.toFixed(2);
 }
 
+
+// --- CSV export -------------------------------------------------------------
+registerExport('ranking', () => {
+  if (!_lastExport || !_lastExport.top.length) return null;
+  const { top, metric, year } = _lastExport;
+  return {
+    rows: top.map((r, i) => ({
+      puesto: i + 1,
+      territorio: r.country,
+      codigo: r.iso,
+      anio: year,
+      indicador: metric.labelText,
+      valor: r.value,
+      unidad: metric.unit,
+    })),
+    indicator: State.get('activeIndicator'),
+    view: 'ranking',
+  };
+});

@@ -48,8 +48,8 @@ export const CATEGORIES = [
     icon: 'footprint',
     indicators: [
       { id: 'fp_hours_total',  field: 'footprint',          label: { es: 'Horas anuales',            en: 'Annual hours' },           unit: 'h/año', source: 'trade_footprint', footprintFlow: true },
-      { id: 'fp_hours_child',  field: 'hours_child_labor',  label: { es: 'Trabajo infantil embebido',en: 'Embedded child labour' },  unit: 'h/año', source: 'footprints', warn: true },
-      { id: 'fp_hours_forced', field: 'hours_forced_labor', label: { es: 'Trabajo forzoso embebido', en: 'Embedded forced labour' }, unit: 'h/año', source: 'footprints', warn: true },
+      { id: 'fp_hours_child',  field: 'hours_child_labor',  label: { es: 'Trabajo infantil (producción propia)', en: 'Child labour (domestic output)' },  unit: 'h/año', source: 'footprints', warn: true },
+      { id: 'fp_hours_forced', field: 'hours_forced_labor', label: { es: 'Trabajo forzoso (producción propia)', en: 'Forced labour (domestic output)' }, unit: 'h/año', source: 'footprints', warn: true },
     ],
   },
   {

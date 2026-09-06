@@ -1,10 +1,25 @@
 // About view — project context, team, sources and credits.
 
-import { State } from '../state.js';
+import { State } from '../state.js?v=20260906f';
+import { DataLoader } from '../data-loader.js?v=20260906f';
+
+// Filled from data/manifest.json when the loaded tree is a trimmed web release
+// (the full-precision tree has no such note, so nothing is shown there).
+let _trimNote = null;
+
+// Which tab of the About view is open: 'about' or 'methods'.
+let _tab = 'about';
+let _methods = null;   // lazily imported: the section pulls ~70 KB of provenance JSON
 
 export function initAboutView() {
   render();
   State.subscribe('language', render);
+  DataLoader.loadManifest().then(manifest => {
+    if (typeof manifest?.release === 'string' && manifest.release.startsWith('web-trim')) {
+      _trimNote = manifest.note || null;
+      render();
+    }
+  }).catch(() => {});
 }
 
 function render() {
@@ -12,8 +27,18 @@ function render() {
   if (!container) return;
   const lang = State.get('language');
   const t = lang === 'en' ? content.en : content.es;
+  const tabs = lang === 'en'
+    ? { about: 'About', methods: 'How we work' }
+    : { about: 'Acerca de', methods: 'Cómo trabajamos' };
 
   container.innerHTML = `
+    <div class="about-tabs" role="tablist">
+      ${['about', 'methods'].map(id => `
+        <button type="button" role="tab" class="about-tab ${_tab === id ? 'active' : ''}"
+                data-about-tab="${id}" aria-selected="${_tab === id}">${tabs[id]}</button>`).join('')}
+    </div>
+    <div class="about-pane" id="about-pane-methods" ${_tab === 'methods' ? '' : 'hidden'}></div>
+    <div class="about-pane" id="about-pane-about" ${_tab === 'about' ? '' : 'hidden'}>
     <div class="about-page">
       <header class="about-hero">
         <div class="about-eyebrow">${t.eyebrow}</div>
@@ -34,28 +59,28 @@ function render() {
         </div>
         <div class="about-team-grid">
           ${authorCard({
-            photo: 'assets/authors/juan.jpg',
+            photo: 'assets/authors/juan.webp',
             name: 'Juan Infante-Amate',
             role: t.juanRole,
             desc: t.juanDesc,
             links: [
-              { href: 'https://www.ugr.es/personal/juan-infante-amate', title: 'Web UGR', iconSrc: 'assets/icons/web.png' },
-              { href: 'https://scholar.google.com/citations?user=s89YchgAAAAJ', title: 'Google Scholar', iconSrc: 'assets/icons/google-scholar-1.png' },
-              { href: 'https://www.researchgate.net/profile/Juan-Infante-Amate', title: 'ResearchGate', iconSrc: 'assets/icons/ResearchGate_icon_SVG.svg.png' },
+              { href: 'https://www.ugr.es/personal/juan-infante-amate', title: 'Web UGR', iconSrc: 'assets/icons/web.webp' },
+              { href: 'https://scholar.google.com/citations?user=s89YchgAAAAJ', title: 'Google Scholar', iconSrc: 'assets/icons/google-scholar-1.webp' },
+              { href: 'https://www.researchgate.net/profile/Juan-Infante-Amate', title: 'ResearchGate', iconSrc: 'assets/icons/ResearchGate_icon_SVG.svg.webp' },
               { href: 'https://orcid.org/0000-0003-1446-7181', title: 'ORCID', cls: 'about-icon-orcid', icon: iconOrcid() },
               { href: 'mailto:jinfama@ugr.es', title: 'Email', icon: iconMail(), external: false },
             ],
           })}
           ${authorCard({
-            photo: 'assets/authors/helios.jpg',
+            photo: 'assets/authors/helios.webp',
             name: 'Helios Escalante Moreno',
             role: t.heliosRole,
             desc: t.heliosDesc,
             links: [
-              { href: 'https://www.ugr.es/personal/helios-escalante-moreno', title: 'Web UGR', iconSrc: 'assets/icons/web.png' },
+              { href: 'https://www.ugr.es/personal/helios-escalante-moreno', title: 'Web UGR', iconSrc: 'assets/icons/web.webp' },
               { href: 'https://produccioncientifica.ugr.es/investigadores/455722/detalle?lang=es', title: 'Producción científica UGR', icon: iconProfile() },
-              { href: 'https://scholar.google.com/scholar?q=%22Helios%20Escalante%20Moreno%22', title: 'Google Scholar', iconSrc: 'assets/icons/google-scholar-1.png' },
-              { href: 'https://www.researchgate.net/search/publication?q=Helios%20Escalante%20Moreno', title: 'ResearchGate', iconSrc: 'assets/icons/ResearchGate_icon_SVG.svg.png' },
+              { href: 'https://scholar.google.com/scholar?q=%22Helios%20Escalante%20Moreno%22', title: 'Google Scholar', iconSrc: 'assets/icons/google-scholar-1.webp' },
+              { href: 'https://www.researchgate.net/search/publication?q=Helios%20Escalante%20Moreno', title: 'ResearchGate', iconSrc: 'assets/icons/ResearchGate_icon_SVG.svg.webp' },
               { href: 'https://x.com/Helios_EM', title: 'X / Twitter', cls: 'about-icon-social', icon: iconX() },
             ],
           })}
@@ -77,9 +102,10 @@ function render() {
             <a class="about-data-link" href="https://ilostat.ilo.org/" target="_blank" rel="noopener">ILOSTAT</a>
             <a class="about-data-link" href="https://data.worldbank.org/" target="_blank" rel="noopener">World Bank</a>
             <a class="about-data-link" href="https://www.walkfree.org/global-slavery-index/" target="_blank" rel="noopener">GSI</a>
-            <a class="about-data-link" href="data/manifest_provisional.json" target="_blank" rel="noopener">${t.manifest}</a>
+            <a class="about-data-link" href="data/manifest.json" target="_blank" rel="noopener">${t.manifest}</a>
           </div>
           <p class="about-note">${t.methodNote}</p>
+          ${_trimNote ? `<p class="about-note about-note-trim">${_trimNote[lang] || _trimNote.es || ''}</p>` : ''}
         </section>
 
         <section class="about-info-panel">
@@ -95,7 +121,38 @@ function render() {
         </section>
       </div>
     </div>
+    </div>
   `;
+
+  container.querySelectorAll('[data-about-tab]').forEach(btn => {
+    btn.addEventListener('click', () => selectTab(btn.dataset.aboutTab));
+  });
+  if (_tab === 'methods') openMethods(lang);
+}
+
+function selectTab(tab) {
+  if (_tab === tab) return;
+  _tab = tab;
+  render();
+}
+
+// The methods section is loaded the first time it is opened, never at boot: it pulls its own
+// module plus ~70 KB of provenance JSON that nobody needs to see the map.
+async function openMethods(lang) {
+  const host = document.getElementById('about-pane-methods');
+  if (!host) return;
+  try {
+    if (!_methods) {
+      const mod = await import('../methods/como-trabajamos.js?v=20260906f');
+      _methods = mod.default;
+    }
+    await _methods.render(host, lang);
+  } catch (error) {
+    console.error('[about] methods section failed', error);
+    host.innerHTML = `<div class="pv-section"><p class="pv-empty">${
+      lang === 'en' ? 'The methods section could not be loaded.'
+                    : 'No se pudo cargar la sección de métodos.'}</p></div>`;
+  }
 }
 
 const content = {

@@ -1,7 +1,7 @@
 // Regional estimates for indicators that exist at country level but are not
 // stored directly in the regional aggregate files.
 
-import { DataLoader } from './data-loader.js?v=20260522-tildes1';
+import { DataLoader } from './data-loader.js?v=20260906f';
 
 let _countryData = null;
 let _regionByIso = null;

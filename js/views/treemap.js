@@ -1,17 +1,21 @@
 // Treemap view: composition by product category or by countries.
 
-import { State } from '../state.js';
-import { DataLoader } from '../data-loader.js?v=20260522-tildes1';
-import { getIndicator } from '../indicators.js?v=20260522-tildes1';
-import { formatCategoryLabel } from '../labels.js';
-import { metricValue, resolveMetric, supportsCropCategory } from '../metric.js?v=20260522-tildes1';
-import { bindSvgTooltip } from '../chart-tooltip.js?v=20260522-hover1';
+import { State } from '../state.js?v=20260906f';
+import { DataLoader } from '../data-loader.js?v=20260906f';
+import { getIndicator } from '../indicators.js?v=20260906f';
+import { formatCategoryLabel } from '../labels.js?v=20260906f';
+import { metricValue, resolveMetric, supportsCropCategory } from '../metric.js?v=20260906f';
+import { bindSvgTooltip } from '../chart-tooltip.js?v=20260906f';
+import { registerExport } from '../export-csv.js?v=20260906f';
 
 const PALETTE = ['#214B52', '#8DBBC8', '#2F4D63', '#A5534E', '#62735A', '#B78B55', '#6F4B8B', '#2D7B7C', '#7D8B72', '#263F46'];
 let _countryData = null;
+let _lastExport = null;   // rows currently painted, for the CSV export
 
 export function initTreemapView() {
   refresh();
+  // Render when the view becomes visible (the panel is display:none otherwise → clientWidth 0).
+  State.subscribe('activeView', v => { if (v === 'treemap') refresh(); });
   State.subscribe('activeCategory', refresh);
   State.subscribe('activeIndicator', refresh);
   State.subscribe('functionalUnit', refresh);
@@ -26,9 +30,12 @@ export function initTreemapView() {
 }
 
 async function refresh() {
+  // Hidden view: do not fetch or draw (avoids downloading categories/<ISO>.json on every map click).
+  if (State.get('activeView') && State.get('activeView') !== 'treemap') return;
   const header = document.getElementById('treemap-header');
   const chart  = document.getElementById('treemap-chart');
   if (!chart) return;
+  _lastExport = null;
   const sel = State.get('selectedCountries');
   const ind = getIndicator(State.get('activeCategory'), State.get('activeIndicator'));
   const metric = resolveMetric(ind, State.get('language'));
@@ -84,7 +91,9 @@ async function refresh() {
     .map(r => ({ name: formatCategoryLabel(r.category_labor, State.get('language')), value: metricValue(r, metric) }))
     .filter(r => r.value != null && isFinite(r.value) && r.value > 0)
     .sort((a, b) => b.value - a.value);
-  renderTreemap(chart, rows, metric);
+  if (!_countryData) _countryData = await DataLoader.loadCountryYearIndicators().catch(() => null);
+  const countryName = data.country || _countryData?.country_names?.[iso] || iso;
+  renderTreemap(chart, rows, metric, { territorio: countryName, codigo: iso });
 }
 
 async function renderCountryTreemap(chart, metric, year) {
@@ -97,12 +106,13 @@ async function renderCountryTreemap(chart, metric, year) {
   renderTreemap(chart, rows, metric);
 }
 
-function renderTreemap(chart, rows, metric) {
+function renderTreemap(chart, rows, metric, context = {}) {
+  _lastExport = { rows: rows.map(r => ({ ...r, ...context })), metric, year: State.get('currentYear') };
   if (!rows.length) {
     chart.innerHTML = '<div style="padding:24px;color:var(--c-text-3)">Sin datos en este año.</div>';
     return;
   }
-  const W = chart.clientWidth;
+  const W = chart.clientWidth || chart.parentElement?.clientWidth || 800;
   const H = chart.clientHeight || 400;
   chart.innerHTML = '';
   const svg = d3.select(chart).append('svg').attr('width', W).attr('height', H);
@@ -154,7 +164,7 @@ async function renderProductFacets(chart, countries, metric, year, ind) {
       return { iso, rows: [] };
     }
   }));
-  const W = chart.clientWidth;
+  const W = chart.clientWidth || chart.parentElement?.clientWidth || 800;
   const H = chart.clientHeight || 400;
   chart.innerHTML = '';
   const svg = d3.select(chart).append('svg').attr('width', W).attr('height', H);
@@ -165,6 +175,11 @@ async function renderProductFacets(chart, countries, metric, year, ind) {
   const titleH = 20;
   const cellW = (W - gap * (cols + 1)) / cols;
   const cellH = Math.max(120, (H - gap * (rowsN + 1)) / rowsN);
+  _lastExport = {
+    rows: facets.flatMap(facet => facet.rows.map(r => ({ ...r, codigo: facet.iso }))),
+    metric,
+    year,
+  };
   facets.forEach((facet, i) => {
     const col = i % cols;
     const row = Math.floor(i / cols);
@@ -207,3 +222,22 @@ async function renderProductFacets(chart, countries, metric, year, ind) {
   });
 }
 
+
+// --- CSV export -------------------------------------------------------------
+registerExport('treemap', () => {
+  if (!_lastExport || !_lastExport.rows.length) return null;
+  const { rows, metric, year } = _lastExport;
+  return {
+    rows: rows.map(r => ({
+      ...(r.territorio ? { territorio: r.territorio } : {}),
+      ...(r.codigo ? { codigo: r.codigo } : {}),
+      elemento: r.name,
+      anio: year,
+      indicador: metric.labelText,
+      valor: r.value,
+      unidad: metric.unit,
+    })),
+    indicator: State.get('activeIndicator'),
+    view: 'composicion',
+  };
+});

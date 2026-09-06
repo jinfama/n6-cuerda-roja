@@ -2,7 +2,7 @@
 // On CTA click: rotate to a target longitude, zoom slightly, fade out, hand off to the app.
 
 import * as THREE from 'three';
-import { State } from './state.js';
+import { State } from './state.js?v=20260906f';
 
 let _scene, _camera, _renderer, _globe, _atmosphere, _animFrame;
 let _cursorRaf = null;
@@ -98,7 +98,7 @@ function initGlobe() {
   _globe.rotation.x = -0.14;
   _scene.add(_globe);
 
-  createAgrarianTexture('data/textures/earth.png').then(tex => {
+  createAgrarianTexture('data/textures/earth.webp').then(tex => {
     if (!tex || !_globe) return;
     mat.map = tex;
     mat.needsUpdate = true;

@@ -1,15 +1,17 @@
 // Table view — minimal table of selected countries' rows at currentYear.
 
-import { State } from '../state.js';
-import { DataLoader } from '../data-loader.js?v=20260522-tildes1';
-import { getIndicator } from '../indicators.js?v=20260522-tildes1';
-import { escapeHtml, formatCategoryLabel } from '../labels.js';
-import { metricValue, resolveMetric, supportsCropCategory } from '../metric.js?v=20260522-tildes1';
-import { enrichRegionalRow } from '../regional-estimates.js?v=20260522-tildes1';
+import { State } from '../state.js?v=20260906f';
+import { DataLoader } from '../data-loader.js?v=20260906f';
+import { getIndicator } from '../indicators.js?v=20260906f';
+import { escapeHtml, formatCategoryLabel } from '../labels.js?v=20260906f';
+import { metricValue, resolveMetric, supportsCropCategory } from '../metric.js?v=20260906f';
+import { enrichRegionalRow } from '../regional-estimates.js?v=20260906f';
+import { registerExport } from '../export-csv.js?v=20260906f';
 
 let _countryData = null;
 let _regionRows = null;
 let _regionCategoryRows = null;
+let _lastExport = null;   // rows currently painted, for the CSV export
 
 export function initTableView() {
   refresh();
@@ -28,8 +30,13 @@ export function initTableView() {
 }
 
 async function refresh() {
+  // Hidden view: do not fetch or draw. Without this the table pulled
+  // categories/<ISO>.json on every map click even while invisible.
+  const view = State.get('activeView');
+  if (view && view !== 'table') return;
   const container = document.getElementById('table-container');
   if (!container) return;
+  _lastExport = null;
   const ind = getIndicator(State.get('activeCategory'), State.get('activeIndicator'));
   const metric = resolveMetric(ind, State.get('language'));
   const year = State.get('currentYear');
@@ -56,6 +63,7 @@ async function refresh() {
     return;
   }
   rows.sort((a, b) => (b.__metric || 0) - (a.__metric || 0));
+  _lastExport = { rows, metric, year };
 
   container.innerHTML = `
     <table>
@@ -87,7 +95,9 @@ async function tableRows(scope, category, metric, year) {
 
 async function countryTableRows(category, year) {
   const sel = State.get('selectedCountries') || [];
-  if (!sel.length) {
+  if (!sel.length && category) {
+    // One categories/<ISO>.json per country: falling back to all of them here would be
+    // 186 fetches, so with a crop filter on we still ask for a pick.
     return {
       selectionOk: false,
       message: 'Selecciona uno o más países en el panel derecho para ver sus datos en tabla.',
@@ -98,7 +108,11 @@ async function countryTableRows(category, year) {
     const all = await Promise.all(sel.map(async iso => {
       try {
         const data = await DataLoader.loadCountryCategories(iso);
-        return (data.rows || [])
+        if (!data || !Array.isArray(data.rows)) {
+          console.warn('[table] unexpected categories payload for', iso, data?.schema_id);
+          return [];
+        }
+        return data.rows
           .filter(r => r.year === year && r.category_labor === category)
           .map(r => decorateRow(r, r.country || iso, 'País', formatCategoryLabel(r.category_labor, State.get('language'))));
       } catch (_) {
@@ -109,7 +123,10 @@ async function countryTableRows(category, year) {
   }
 
   if (!_countryData) _countryData = await DataLoader.loadCountryYearIndicators();
-  const rows = sel
+  // No pick means the whole world -- the same universe the map and the ranking show.
+  // The old prompt turned the cover's "Tabla" button into a dead end.
+  const isos = sel.length ? sel : Object.keys(_countryData.data || {});
+  const rows = isos
     .map(iso => {
       const row = _countryData.data?.[iso]?.[year];
       if (!row) return null;
@@ -193,3 +210,24 @@ function fmt(v) {
   return v.toFixed(2);
 }
 
+
+// --- CSV export -------------------------------------------------------------
+registerExport('table', () => {
+  if (!_lastExport || !_lastExport.rows.length) return null;
+  const { rows, metric, year } = _lastExport;
+  return {
+    rows: rows.map(r => ({
+      territorio: r.__territory || '',
+      ambito: r.__scope || '',
+      categoria: r.__category || '',
+      anio: year,
+      indicador: metric.labelText,
+      valor: r.__metric,
+      unidad: metric.unit,
+      trabajadores: r.workers ?? '',
+      horas_totales: r.hours_total ?? '',
+    })),
+    indicator: State.get('activeIndicator'),
+    view: 'tabla',
+  };
+});

@@ -2,12 +2,13 @@
 // Reads the active indicator from State and paints countries from the
 // precomputed country_year_indicators.json bundle.
 
-import { State } from '../state.js';
-import { DataLoader } from '../data-loader.js?v=20260522-tildes1';
-import { getIndicator } from '../indicators.js?v=20260522-tildes1';
-import { escapeHtml, formatCategoryLabel } from '../labels.js';
-import { metricValue, resolveMetric, supportsCropCategory } from '../metric.js?v=20260522-tildes1';
-import { enrichRegionalData } from '../regional-estimates.js?v=20260522-tildes1';
+import { State } from '../state.js?v=20260906f';
+import { DataLoader } from '../data-loader.js?v=20260906f';
+import { getIndicator } from '../indicators.js?v=20260906f';
+import { escapeHtml, formatCategoryLabel } from '../labels.js?v=20260906f';
+import { metricValue, resolveMetric, supportsCropCategory } from '../metric.js?v=20260906f';
+import { enrichRegionalData } from '../regional-estimates.js?v=20260906f';
+import { registerExport } from '../export-csv.js?v=20260906f';
 
 const PALETTES = {
   workers_hours: ['#edf5f5', '#d7e8ea', '#b8d3d8', '#92b8c0', '#6798a2', '#3f717b', '#21454d'],
@@ -53,6 +54,8 @@ let _regionData = null;
 let _regionCategoryData = null;
 let _tradeFootprint = null;
 let _regionFeatures = [];
+let _tradeFlowRows = null;   // last painted arcs, for the CSV export
+let _tradeExportMeta = null;
 
 function formatVal(v) {
   if (v == null || !isFinite(v)) return '—';
@@ -193,6 +196,15 @@ export async function initMapView() {
   drawCountries();
   paint();
 
+  // Tapping the empty map (ocean) dismisses the anchored card.
+  _svg.on('click', event => {
+    if (event.target === _svg.node() && _tooltip.classed('anchored')) hideTooltip();
+  });
+
+  refreshCanvasCaption();
+  ['activeIndicator', 'activeCategory', 'currentYear', 'language', 'cropCategoryFilter']
+    .forEach(k => State.subscribe(k, refreshCanvasCaption));
+
   State.subscribe('activeIndicator',   paint);
   State.subscribe('activeCategory',    paint);
   State.subscribe('functionalUnit',    paint);
@@ -236,10 +248,15 @@ function drawCountries() {
       .attr('class', 'country-path')
       .attr('d', _path)
       .attr('data-iso', d => getISO3(d) || '')
-      .on('mouseenter', (event, d) => showTooltip(event, d))
-      .on('mousemove',  (event)    => moveTooltip(event))
-      .on('mouseleave', () => hideTooltip())
+      // Chromium synthesises mouseenter/mouseleave around a tap, and the
+      // synthetic mouseleave arrived ~4 ms after the click and wiped the card
+      // we had just anchored. On a coarse pointer the hover pair is inert.
+      .on('mouseenter', (event, d) => { if (!isCoarsePointer()) showTooltip(event, d); })
+      .on('mousemove',  (event)    => { if (!isCoarsePointer()) moveTooltip(event); })
+      .on('mouseleave', () => { if (!isCoarsePointer()) hideTooltip(); })
       .on('click', (event, d) => {
+        // Coarse pointer: the tap must also *read* the value, not only select.
+        if (isCoarsePointer()) showTooltip(event, d);
         const iso = getISO3(d);
         if (State.get('activeCategory') === 'trade') {
           if (iso) State.focusCountry(iso);
@@ -280,6 +297,34 @@ function valuesForScale(data, metric) {
   return values;
 }
 
+// Paints fp_hours_child / fp_hours_forced from country_year_indicators.
+// Returns false when the loaded tree has no such field, so the caller can fall
+// back to the "coming soon" note instead of painting an empty world.
+async function paintFootprintsIndicator(metric, token) {
+  const data = _aggregates;
+  if (!data) return false;
+  const values = valuesForScale(data, metric);
+  if (!values.length) return false;
+  if (token !== _paintToken) return true;
+  clearRegionLayer();
+  _currentScope = 'country';
+  _currentData = data;
+  _currentCountryNames = _countryNames || {};
+  const year = State.get('currentYear');
+  const palette = paletteFor(metric);
+  const scale = scaleFor(values, palette);
+  _g.selectAll('path.country-path').style('display', null);
+  _g.selectAll('path.country-path').style('fill', d => {
+    const key = featureDataKey(d);
+    if (!key) return '#DCE8E9';
+    const v = valueFor(data, key, metric, year);
+    return (v == null || !isFinite(v)) ? '#DCE8E9' : scale(v);
+  });
+  paintSelection();
+  paintLegend(values, palette, metric, scale, null);
+  return true;
+}
+
 async function paint() {
   const token = ++_paintToken;
   const ind = getIndicator(State.get('activeCategory'), State.get('activeIndicator'));
@@ -290,7 +335,16 @@ async function paint() {
     return;
   }
   clearTradeLayer();
-  // Indicators sourced from footprints/conditions live in other files for now.
+  _tradeFlowRows = null;
+  // Embedded child/forced labour hours: the web release folds the country-year
+  // aggregates of the (unpublished) footprints partitions into
+  // country_year_indicators, so they paint from the same bundle as everything
+  // else. On a tree without those fields we fall back to the note below.
+  if (metric.source === 'footprints') {
+    const painted = await paintFootprintsIndicator(metric, token);
+    if (painted) return;
+  }
+  // Indicators sourced from conditions live in other files for now.
   if (metric.source && !['regions', 'trade_footprint'].includes(metric.source)) {
     _g.selectAll('path.country-path').style('fill', 'var(--c-bg-h)');
     d3.select('#map-legend').html(
@@ -407,10 +461,13 @@ function paintRegionMap(data, metric, year, values, palette, scale, category) {
         const v = d.properties.value;
         return (v == null || !isFinite(v)) ? '#DCE8E9' : scale(v);
       })
-      .on('mouseenter', (event, d) => showRegionTooltip(event, d, metric))
-      .on('mousemove', (event) => moveTooltip(event))
-      .on('mouseleave', () => hideTooltip())
-      .on('click', (event, d) => State.toggleRegion(d.properties.region));
+      .on('mouseenter', (event, d) => { if (!isCoarsePointer()) showRegionTooltip(event, d, metric); })
+      .on('mousemove', (event) => { if (!isCoarsePointer()) moveTooltip(event); })
+      .on('mouseleave', () => { if (!isCoarsePointer()) hideTooltip(); })
+      .on('click', (event, d) => {
+        if (isCoarsePointer()) showRegionTooltip(event, d, metric);
+        State.toggleRegion(d.properties.region);
+      });
 
   const obj = topoCountryObject();
   const regionOf = geom => {
@@ -472,7 +529,33 @@ function featureDataKey(feature) {
   return iso;
 }
 
+// Title, year and source printed inside the map frame, so a screen capture of
+// the map is self-explanatory outside the app.
+function paintCanvasCaption(metric, category) {
+  const title = document.getElementById('map-caption-title');
+  const source = document.getElementById('map-caption-source');
+  if (!title || !source) return;
+  const lang = State.get('language');
+  const bits = [metric ? metric.labelText : ''];
+  if (metric && metric.unit) bits.push(`(${metric.unit})`);
+  if (category) bits.push('· ' + formatCategoryLabel(category, lang));
+  title.textContent = `${bits.filter(Boolean).join(' ')} · ${State.get('currentYear')}`;
+  source.textContent = document.getElementById('footer-source')?.textContent || '';
+}
+
+// Keeps the in-canvas caption in step with the state even in the trade layer,
+// which paints its own legend and never reaches paintLegend().
+export function refreshCanvasCaption() {
+  let metric = null;
+  try {
+    const ind = getIndicator(State.get('activeCategory'), State.get('activeIndicator'));
+    metric = ind ? resolveMetric(ind, State.get('language')) : null;
+  } catch (_) { metric = null; }
+  paintCanvasCaption(metric, State.get('cropCategoryFilter'));
+}
+
 function paintLegend(values, palette, metric, scale, category) {
+  paintCanvasCaption(metric, category);
   const box = d3.select('#map-legend');
   if (!box.node()) return;
   const ext = d3.extent(values);
@@ -494,10 +577,16 @@ function clearTradeLayer() {
   _g.selectAll('.trade-label').remove();
   _g.selectAll('.trade-focus-ring').remove();
   d3.select('#map-container').selectAll('.trade-map-controls').remove();
+  document.getElementById('map-container')?.classList.remove('has-trade-controls');
 }
 
-function tradeMeasureIndex() {
-  return 0;
+// Row layouts in the bilateral partitions:
+//   total             [tonnes, hours]           -> tonnes at index 0
+//   products/partners [name, tonnes, hours]     -> tonnes at index 1
+// Reading index 0 of a product row returned the product NAME, so the map
+// painted zeros for every product other than the total (audit finding).
+function tradeMeasureIndex(kind = 'total') {
+  return kind === 'named' ? 1 : 0;
 }
 
 function tradeUnit() {
@@ -512,25 +601,26 @@ function tradeCountryValue(country, flow, product) {
     const block = country[f];
     if (!block) continue;
     if (product === '__total__') {
-      total += +block.total?.[tradeMeasureIndex()] || 0;
+      total += +block.total?.[tradeMeasureIndex('total')] || 0;
     } else {
       const row = (block.products || []).find(d => d[0] === product);
-      total += +row?.[tradeMeasureIndex()] || 0;
+      total += +row?.[tradeMeasureIndex('named')] || 0;
     }
   }
   return total;
 }
 
-function tradePartnerRows(country, flow, product) {
+function tradePartnerRows(country, flow, product, shard = null) {
   if (!country) return [];
   const flows = flow === 'both' ? ['imports', 'exports'] : [flow];
   const rows = [];
   for (const f of flows) {
     const block = country[f];
     if (!block) continue;
+    // Web release: product_partners lives in bilateral/countries/<ISO>.json.
     const partners = product === '__total__'
       ? (block.partners || [])
-      : (block.product_partners?.[product] || []);
+      : (shard?.[f]?.[product] || block.product_partners?.[product] || []);
     for (const p of partners) {
       rows.push({ flow: f, partner: p[0], tonnes: +p[1] || 0, hours: +p[2] || 0 });
     }
@@ -538,14 +628,45 @@ function tradePartnerRows(country, flow, product) {
   return rows.filter(d => d.partner && d.partner !== '__other__' && d.tonnes > 0);
 }
 
-function directionalTradeRows(countryIso, country, flow, product) {
-  return tradePartnerRows(country, flow, product)
+function directionalTradeRows(countryIso, country, flow, product, shard = null) {
+  return tradePartnerRows(country, flow, product, shard)
     .map(row => ({
       ...row,
       source: row.flow === 'imports' ? row.partner : countryIso,
       target: row.flow === 'imports' ? countryIso : row.partner,
     }))
     .filter(row => row.source && row.target && row.source !== row.target);
+}
+
+// Web release: with no country selected, per-product world arcs come from the
+// precomputed directed-arc file instead of scanning every country's partners.
+function globalProductRows(productDoc, flow, product, centroids) {
+  const block = productDoc?.products?.[product];
+  if (!block) return null;
+  const flows = flow === 'both' ? ['imports', 'exports'] : [flow];
+  // One arc per directed pair, keeping the larger of the two mirror reports —
+  // the same rule globalTradeRows() applies on the legacy tree. Without it the
+  // importer-reported and exporter-reported arcs of one pair both survive and
+  // the world view lists (and overdraws) the same flow twice.
+  const byDirection = new Map();
+  for (const f of flows) {
+    for (const arc of (block[f] || [])) {
+      const [source, target, tonnes, hours] = arc;
+      if (!centroids.has(source) || !centroids.has(target) || source === target) continue;
+      const row = {
+        flow: f,
+        partner: f === 'imports' ? source : target,
+        source,
+        target,
+        tonnes: +tonnes || 0,
+        hours: +hours || 0,
+      };
+      const key = `${source}->${target}`;
+      const prev = byDirection.get(key);
+      if (!prev || row.tonnes > prev.tonnes) byDirection.set(key, row);
+    }
+  }
+  return [...byDirection.values()];
 }
 
 function globalTradeRows(countries, flow, product, centroids, limit) {
@@ -614,6 +735,9 @@ function renderTradeMapControls() {
     .data([null])
     .join('div')
     .attr('class', 'trade-map-controls');
+  // The flow pills live in the same corner as the in-canvas caption: mark the
+  // frame so the caption drops below them instead of hiding behind them.
+  document.getElementById('map-container')?.classList.add('has-trade-controls');
   box.html(`
     <div class="trade-map-control-group" role="group" aria-label="${lang === 'en' ? 'Trade flow' : 'Flujo comercial'}">
       ${[
@@ -679,13 +803,28 @@ async function paintTradeMap(metric) {
   const centroids = centroidByIso();
   const hasSelection = Boolean(selected && countries[selected] && centroids.has(selected));
   const focus = hasSelection ? centroids.get(selected) : null;
-  const rawRows = hasSelection
-    ? directionalTradeRows(selected, countries[selected], flow, product)
-    : globalTradeRows(countries, flow, product, centroids, topN);
+  const resolvedYear = yearData.year ?? year;
+  let rawRows;
+  if (hasSelection) {
+    let shard = null;
+    if (product !== '__total__') {
+      const doc = await DataLoader.loadBilateralCountry(selected);
+      shard = doc?.product_partners?.[String(resolvedYear)] || null;
+    }
+    rawRows = directionalTradeRows(selected, countries[selected], flow, product, shard);
+  } else if (product !== '__total__') {
+    const productDoc = await DataLoader.loadBilateralProducts(resolvedYear);
+    rawRows = globalProductRows(productDoc, flow, product, centroids)
+      || globalTradeRows(countries, flow, product, centroids, topN);
+  } else {
+    rawRows = globalTradeRows(countries, flow, product, centroids, topN);
+  }
   const flowRows = withCurveSides(rawRows
     .filter(row => centroids.has(row.source) && centroids.has(row.target))
     .sort((a, b) => b.tonnes - a.tonnes)
     .slice(0, topN));
+  _tradeFlowRows = flowRows;
+  _tradeExportMeta = { year: resolvedYear, flow, product: productTitle, names: index.countries || {} };
 
   if (!flowRows.length) {
     d3.select('#map-legend').html(`
@@ -718,6 +857,7 @@ async function paintTradeMap(metric) {
     .attr('marker-end', d => d.flow === 'imports' ? 'url(#trade-arrow-import)' : 'url(#trade-arrow-export)')
     .style('stroke-width', d => width(d.tonnes))
     .on('mouseenter', (event, d) => {
+      if (isCoarsePointer()) return;
       const source = index.countries?.[d.source] || d.source;
       const target = index.countries?.[d.target] || d.target;
       const flowLabel = d.flow === 'imports'
@@ -727,8 +867,20 @@ async function paintTradeMap(metric) {
       _tooltip.classed('visible', true);
       moveTooltip(event);
     })
-    .on('mousemove', moveTooltip)
-    .on('mouseleave', hideTooltip);
+    .on('mousemove', event => { if (!isCoarsePointer()) moveTooltip(event); })
+    .on('mouseleave', () => { if (!isCoarsePointer()) hideTooltip(); })
+    .on('click', function (event, d) {
+      if (!isCoarsePointer()) return;
+      event.stopPropagation();
+      const source = index.countries?.[d.source] || d.source;
+      const target = index.countries?.[d.target] || d.target;
+      const flowLabel = d.flow === 'imports'
+        ? (lang === 'en' ? 'reported as import' : 'registrado como importación')
+        : (lang === 'en' ? 'reported as export' : 'registrado como exportación');
+      _tooltip.html(`<strong>${escapeHtml(source)} &rarr; ${escapeHtml(target)}</strong>${escapeHtml(flowLabel)}<br>${formatVal(d.tonnes)} ${tradeUnit()}${d.hours ? `<br>${formatVal(d.hours)} h` : ''}`);
+      _tooltip.classed('visible', true);
+      anchorTooltip();
+    });
 
   const nodeMap = new Map();
   flowRows.forEach(row => {
@@ -768,6 +920,34 @@ async function paintTradeMap(metric) {
   `);
 }
 
+// Touch devices have no hover, so the floating tooltip never showed a single
+// value on a phone: the tap only selected the country. On a coarse pointer we
+// pin the tooltip to the bottom of the map as a card that stays until the next
+// tap, with a close button of its own.
+function isCoarsePointer() {
+  return !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+}
+
+function anchorTooltip() {
+  const node = _tooltip.node();
+  if (!node) return;
+  _tooltip.classed('anchored', true);
+  node.style.left = '';
+  node.style.top = '';
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'map-tooltip-close';
+  btn.setAttribute('aria-label', State.get('language') === 'en' ? 'Close' : 'Cerrar');
+  btn.textContent = '×';
+  btn.addEventListener('click', event => { event.stopPropagation(); hideTooltip(); });
+  node.appendChild(btn);
+}
+
+function placeTooltip(event) {
+  if (isCoarsePointer()) anchorTooltip();
+  else moveTooltip(event);
+}
+
 function showTooltip(event, d) {
   const iso = getISO3(d);
   const key = featureDataKey(d);
@@ -780,22 +960,87 @@ function showTooltip(event, d) {
   const metric = resolveMetric(ind, State.get('language'));
   let v = null;
   if (key && metric) v = valueFor(_currentData || _aggregates, key, metric, State.get('currentYear'));
-  _tooltip.html(`<strong>${name}</strong>${metric ? metric.labelText : ''}: ${formatVal(v)}${metric ? ' ' + metric.unit : ''}`);
+  // The year belongs in the card: on a phone the pinned card is often read
+  // without the timeline in view.
+  const year = State.get('currentYear');
+  _tooltip.html(`<strong>${name}</strong>${metric ? metric.labelText : ''}: ${formatVal(v)}${metric ? ' ' + metric.unit : ''}<em class="map-tooltip-year">${year}</em>`);
   _tooltip.classed('visible', true);
-  moveTooltip(event);
+  placeTooltip(event);
 }
 function showRegionTooltip(event, d, metric) {
   const region = d.properties.region;
   const v = valueFor(_currentData, region, metric, State.get('currentYear'));
-  _tooltip.html(`<strong>${region}</strong>${metric.labelText}: ${formatVal(v)} ${metric.unit}`);
+  _tooltip.html(`<strong>${region}</strong>${metric.labelText}: ${formatVal(v)} ${metric.unit}<em class="map-tooltip-year">${State.get('currentYear')}</em>`);
   _tooltip.classed('visible', true);
-  moveTooltip(event);
+  placeTooltip(event);
 }
 function moveTooltip(event) {
+  if (_tooltip.classed('anchored')) return;
   const container = document.getElementById('map-container').getBoundingClientRect();
   const x = event.clientX - container.left + 12;
   const y = event.clientY - container.top + 12;
   _tooltip.style('left', `${x}px`).style('top', `${y}px`);
 }
-function hideTooltip() { _tooltip.classed('visible', false); }
+function hideTooltip() { _tooltip.classed('visible', false).classed('anchored', false); }
 
+
+// --- CSV export -------------------------------------------------------------
+// Exports the choropleth exactly as painted: same indicator, same year, same
+// crop filter, same geographic scope. On the trade map it exports the arcs.
+function mapExportRows() {
+  const lang = State.get('language');
+  const ind = getIndicator(State.get('activeCategory'), State.get('activeIndicator'));
+  const metric = resolveMetric(ind, lang);
+  if (!metric) return null;
+  const year = State.get('currentYear');
+
+  if (metric.source === 'bilateral_trade') {
+    if (!_tradeFlowRows || !_tradeFlowRows.length) return null;
+    const meta = _tradeExportMeta || {};
+    const names = meta.names || {};
+    const rows = _tradeFlowRows.map(row => ({
+      origen: names[row.source] || row.source,
+      origen_iso3: row.source,
+      destino: names[row.target] || row.target,
+      destino_iso3: row.target,
+      registrado_como: row.flow === 'imports'
+        ? (lang === 'en' ? 'import' : 'importacion')
+        : (lang === 'en' ? 'export' : 'exportacion'),
+      anio: meta.year ?? year,
+      producto: meta.product || '',
+      toneladas: row.tonnes,
+      horas: row.hours ?? '',
+    }));
+    return { rows, indicator: State.get('activeIndicator'), view: 'mapa_comercio' };
+  }
+
+  const data = _currentData || _aggregates;
+  if (!data) return null;
+  const names = _currentCountryNames || _countryNames || {};
+  const scope = _currentScope === 'region'
+    ? (lang === 'en' ? 'region' : 'region')
+    : _currentScope === 'world'
+      ? (lang === 'en' ? 'world' : 'mundo')
+      : (lang === 'en' ? 'country' : 'pais');
+  const cropFilter = supportsCropCategory(ind) ? State.get('cropCategoryFilter') : null;
+  const rows = [];
+  for (const key of Object.keys(data)) {
+    const value = valueFor(data, key, metric, year);
+    if (value == null || !isFinite(value)) continue;
+    rows.push({
+      territorio: _currentScope === 'country' ? (names[key] || key) : key,
+      codigo: _currentScope === 'country' ? key : '',
+      ambito: scope,
+      anio: year,
+      indicador: metric.labelText,
+      valor: value,
+      unidad: metric.unit,
+      categoria_cultivo: cropFilter ? formatCategoryLabel(cropFilter, lang) : (lang === 'en' ? 'all production' : 'toda la produccion'),
+    });
+  }
+  if (!rows.length) return null;
+  rows.sort((a, b) => (b.valor || 0) - (a.valor || 0));
+  return { rows, indicator: State.get('activeIndicator'), view: 'mapa' };
+}
+
+registerExport('map', mapExportRows);

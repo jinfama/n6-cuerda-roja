@@ -1,236 +1,827 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#EBE2CF">
 <title>Agricultores del Mundo</title>
-<meta name="description" content="Base de datos global sobre el trabajo agrario en perspectiva histórica.">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%23213033'/%3E%3Cpath d='M12 4v15M7.2 9.2 12 6.8l4.8 2.4M8 13.1l4-2 4 2M8.8 17l3.2-1.6 3.2 1.6' stroke='%238DBBC8' stroke-width='1.7' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M6.2 19.6h11.6' stroke='%23F7F9F8' stroke-width='1.3' stroke-linecap='round' opacity='.72'/%3E%3C/svg%3E">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Newsreader:opsz,wght@6..72,500;6..72,650&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=20260522-icons2">
-<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
-<script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
-<script type="importmap">
-{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160/build/three.module.js" } }
-</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,400..800&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,300..600&display=swap">
+<style>
+:root{
+  /* Mono de trabajo y ocre sobre lino crudo: el cartel a dos tintas de una
+     cooperativa agraria. Azul de dril para el trabajo, ocre para la mies. */
+  --lino:#EBE2CF; --lino-2:#E1D6BE; --lino-3:#D6C9AC;
+  --ink:#20211E; --ink-2:#4C4C44; --ink-3:#7B7869;
+  --dril:#2C4A6E; --dril-2:#3E6A99; --dril-d:#1B2F47;
+  --ocre:#BE7A14; --ocre-d:#8E5A0B; --ocre-hi:#DE9E2C;
+  --hair:rgba(32,33,30,.20); --hair-2:rgba(32,33,30,.34);
+  --display:Archivo,"Helvetica Neue",Helvetica,Arial,sans-serif;
+  --text:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,"DejaVu Sans Mono",monospace;
+  --pad:clamp(17px,2.9vw,44px);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--lino);color:var(--ink);font-family:var(--text);font-size:15px;line-height:1.45;
+     -webkit-font-smoothing:antialiased;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
+
+/* paper grain: one static filter pass, no cost per frame */
+#grain{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.30}
+
+.page{position:relative;z-index:1;min-height:100vh;min-height:100dvh;display:grid;
+      grid-template-columns:minmax(310px,31vw) 1fr;grid-template-rows:auto 1fr;
+      grid-template-areas:"head stage" "nav stage"}
+.head,.nav{padding-left:var(--pad);padding-right:var(--pad);position:relative;z-index:2}
+.head{grid-area:head;padding-top:clamp(16px,3vh,32px)}
+.nav{grid-area:nav;display:flex;flex-direction:column;min-height:0;padding-top:clamp(14px,2.4vh,26px);
+     padding-bottom:max(clamp(14px,2.4vh,26px),env(safe-area-inset-bottom))}
+.stage{grid-area:stage;position:relative;border-left:1px solid var(--hair);min-height:0;overflow:hidden;
+       touch-action:manipulation}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+.kicker{margin:0 0 10px;display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:10.5px;
+        letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3)}
+.kicker i{display:block;width:20px;height:2px;background:var(--ocre);flex:0 0 auto}
+h1{margin:0;font-family:var(--display);font-weight:760;font-variation-settings:"wdth" 108;
+   font-size:clamp(31px,3.3vw,49px);line-height:.96;letter-spacing:-.021em;color:var(--ink);text-wrap:balance}
+h1 small{display:block;margin-top:.42em;font-weight:400;font-variation-settings:"wdth" 100;
+         font-size:.40em;letter-spacing:.015em;color:var(--dril)}
+.desc{margin:.9em 0 0;color:var(--ink-2);font-size:clamp(13.5px,1.02vw,15.5px);line-height:1.5;text-wrap:pretty}
+
+.count{margin-top:clamp(12px,2.2vh,24px);display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap}
+.count .n{font-family:var(--display);font-weight:760;font-variation-settings:"wdth" 96;
+          font-size:clamp(40px,4.6vw,68px);line-height:.84;letter-spacing:-.035em;color:var(--dril);
+          font-variant-numeric:tabular-nums;transition:color .18s}
+body.probing .count .n{color:var(--ocre-d)}
+.count .u{font-family:var(--display);font-weight:700;font-size:clamp(15px,1.5vw,22px);line-height:1.5;
+          letter-spacing:.02em;color:var(--ocre-d)}
+.count .cap{flex:1 1 100%;margin:.5em 0 0;font-size:clamp(12px,.92vw,13.5px);color:var(--ink-2);line-height:1.3}
+.count .yr{font-family:var(--mono);font-size:.86em;letter-spacing:.05em;color:var(--ink);
+           border:1px solid var(--hair-2);padding:1px 5px;margin-left:5px;white-space:nowrap}
+
+.w-narrow{display:none}
+.hint{margin:clamp(8px,1.4vh,14px) 0 0;font-family:var(--mono);font-size:10px;letter-spacing:.11em;
+      text-transform:uppercase;color:var(--ink-3);opacity:0;transition:opacity .6s ease .3s;line-height:1.4}
+body.ready .hint{opacity:1}
+body.touched .hint{opacity:0;transition:opacity .25s ease}
+
+.navlabel{margin:0 0 6px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+          color:var(--ink-3)}
+.index{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
+.index li{display:flex;flex:1 1 auto;min-height:46px;max-height:74px;border-top:1px solid var(--hair-2)}
+.index li:last-child{border-bottom:1px solid var(--hair-2)}
+.index a{flex:1;display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--ink);
+         font-family:var(--display);font-weight:560;font-variation-settings:"wdth" 104;
+         font-size:14.5px;letter-spacing:-.004em;line-height:1.15;transition:color .16s}
+.index a svg{width:17px;height:17px;flex:0 0 auto;stroke:var(--dril);fill:none;stroke-width:1.6;
+             stroke-linecap:round;stroke-linejoin:round;transition:stroke .16s}
+.index a .ar{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--ink-3);
+             transition:transform .16s,color .16s}
+.index a.q{font-weight:460;font-size:13.5px;color:var(--ink-2)}
+.index a.q svg{stroke:var(--ink-3)}
+.index a:hover,.index a:focus-visible{color:var(--ocre-d)}
+.index a:hover svg,.index a:focus-visible svg{stroke:var(--ocre-d)}
+.index a:hover .ar,.index a:focus-visible .ar{color:var(--ocre-d);transform:translateX(3px)}
+.index a:focus-visible{outline:2px solid var(--dril);outline-offset:-2px}
+
+/* la ficha que lee lo que hay bajo el cursor */
+.tip{position:fixed;z-index:6;pointer-events:none;top:0;left:0;max-width:min(258px,70vw);
+     background:rgba(243,236,222,.975);border:1px solid var(--hair-2);padding:7px 10px 8px;
+     box-shadow:2px 2px 0 rgba(32,33,30,.10);opacity:0;transition:opacity .12s ease;will-change:transform}
+.tip.on{opacity:1}
+.tip b{display:block;font-family:var(--display);font-weight:700;font-variation-settings:"wdth" 104;
+       font-size:14px;line-height:1.15;color:var(--ink)}
+.tip s{display:block;text-decoration:none;font-family:var(--display);font-weight:760;
+       font-variation-settings:"wdth" 96;font-size:22px;line-height:1.05;margin-top:3px;
+       letter-spacing:-.02em;color:var(--dril);font-variant-numeric:tabular-nums}
+.tip s em{font-style:normal;font-family:var(--display);font-weight:700;font-size:.52em;
+          letter-spacing:.01em;color:var(--ocre-d);margin-left:.3em}
+.tip i{display:block;font-style:normal;font-family:var(--mono);font-size:10.5px;line-height:1.42;
+       color:var(--ink-2);margin-top:4px}
+
+.enter{opacity:0;transform:translateY(5px);transition:opacity .34s ease,transform .42s cubic-bezier(.2,.7,.2,1)}
+body.on .enter{opacity:1;transform:none}
+body.on .enter.d1{transition-delay:.05s}
+body.on .enter.d2{transition-delay:.10s}
+body.on .enter.d3{transition-delay:.15s}
+
+@media (max-width:919px) and (orientation:portrait){
+  .page{grid-template-columns:1fr;grid-template-rows:auto minmax(264px,1fr) auto;
+        grid-template-areas:"head" "stage" "nav"}
+  .stage{border-left:0;border-top:1px solid var(--hair);border-bottom:1px solid var(--hair)}
+  .head{padding-bottom:12px}
+  .nav{padding-top:11px}
+  h1{font-size:clamp(27px,7.6vw,37px)}
+  .desc{font-size:12.8px;margin-top:.65em;line-height:1.42}
+  .count{margin-top:10px}
+  .count .n{font-size:clamp(34px,10.6vw,46px)}
+  .count .cap{margin-top:.35em;font-size:12px}
+  .hint{margin-top:8px;font-size:9.5px;letter-spacing:.09em}
+  .w-wide{display:none}
+  .w-narrow{display:inline}
+  .navlabel{display:none}
+  .index{flex:0 0 auto}
+  .index li{flex:0 0 auto;min-height:44px;max-height:none}
+}
+@media (max-height:540px) and (orientation:landscape){
+  :root{--pad:clamp(12px,2.1vw,22px)}
+  .head{padding-top:10px}
+  .kicker{margin-bottom:5px;display:none}
+  h1{font-size:clamp(22px,2.6vw,32px)}
+  .count{margin-top:8px}
+  .count .n{font-size:clamp(28px,3.4vw,40px)}
+  .count .cap{margin-top:.3em;font-size:11.5px}
+  .desc{font-size:11px;line-height:1.34;margin-top:.45em}
+  .hint{display:none}
+  .navlabel{display:none}
+  .index li{min-height:30px;max-height:36px}
+  .index a{font-size:12.5px;gap:8px}
+  .index a svg{width:14px;height:14px}
+  .nav{padding-top:6px;padding-bottom:8px}
+}
+@media (prefers-reduced-motion:reduce){
+  .enter{transition:none;opacity:1;transform:none}
+  .index a,.index a .ar,.tip,.hint{transition:none}
+}
+</style>
 </head>
 <body>
 
-<!-- ============================================================
-     LANDING — globo Three.js + título + CTA
-     ============================================================ -->
-<div class="landing" id="landing">
-  <canvas class="landing-globe" id="landing-globe"></canvas>
-  <div class="landing-cursor-light" id="landing-cursor-light" aria-hidden="true"></div>
+<svg id="grain" aria-hidden="true" preserveAspectRatio="none" viewBox="0 0 300 300">
+  <filter id="fib" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+    <feTurbulence type="fractalNoise" baseFrequency="0.82 0.78" numOctaves="2" seed="7" result="n"/>
+    <feColorMatrix in="n" type="matrix" values="0 0 0 0 .42  0 0 0 0 .38  0 0 0 0 .29  0 0 0 .42 0"/>
+  </filter>
+  <rect width="300" height="300" filter="url(#fib)"/>
+</svg>
 
-  <nav class="landing-lang" id="landing-lang">
-    <button data-lang="es" class="active">ES</button>
-    <span class="sep">·</span>
-    <button data-lang="en">EN</button>
+<main class="page">
+  <header class="head">
+    <p class="kicker enter"><i></i><span>Visor de datos &middot; 1962&ndash;2021 &middot; 186 pa&iacute;ses</span></p>
+    <h1 class="enter">Agricultores del Mundo<small>Workers of the World</small></h1>
+    <p class="desc enter d1">Un visor sobre quienes trabajan el campo. Cu&aacute;ntos son en cada pa&iacute;s, cu&aacute;ntas horas echan y en qu&eacute; condiciones lo hacen; tambi&eacute;n el trabajo que viaja escondido en el comercio de alimentos.</p>
+    <div class="count enter d2">
+      <span class="n" id="big">580,6</span><span class="u">millones</span>
+      <p class="cap">de personas trabajan la tierra en el mundo<span class="yr" id="year">1962</span></p>
+    </div>
+    <p class="hint" id="hint"><span class="w-wide">Pasa el cursor por el mapa, por la serie o por la columna de la derecha</span><span class="w-narrow">Toca el mapa, la serie o la columna</span></p>
+  </header>
+
+  <nav class="nav" aria-label="Secciones del visor">
+    <p class="navlabel enter d2">Entrar al visor</p>
+    <ul class="index enter d3">
+      <li><a href="visor.html?view=map">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6.4v13.2L9 17.2l6 2.4 6-2.4V4l-6 2.4z"/><path d="M9 4v13.2M15 6.4v13.2"/></svg>
+        <span>Mapa</span><i class="ar" aria-hidden="true">&rarr;</i></a></li>
+      <li><a href="visor.html?view=trend">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 19.5h17"/><path d="M4 16l4.5-5.2 3.4 2.6L19.5 6"/><path d="M15.6 6h3.9v3.9"/></svg>
+        <span>Evoluci&oacute;n</span><i class="ar" aria-hidden="true">&rarr;</i></a></li>
+      <li><a href="visor.html?view=ranking">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 7h6M4.5 12h11M4.5 17h15.5"/></svg>
+        <span>Ranking</span><i class="ar" aria-hidden="true">&rarr;</i></a></li>
+      <li><a href="visor.html?view=treemap">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v6.5H4zM13 4h7v11h-7zM4 12.5h7V20H4zM13 17h7v3h-7z"/></svg>
+        <span>Composici&oacute;n</span><i class="ar" aria-hidden="true">&rarr;</i></a></li>
+      <li><a class="q" href="visor.html?view=table">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z"/><path d="M4 9.6h16M4 14.3h16M9.3 5v14M14.7 5v14"/></svg>
+        <span>Tabla</span><i class="ar" aria-hidden="true">&rarr;</i></a></li>
+      <li><a class="q" href="visor.html?view=about">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.4M12 7.7h.01"/></svg>
+        <span>Acerca</span><i class="ar" aria-hidden="true">&rarr;</i></a></li>
+    </ul>
   </nav>
 
-  <div class="landing-content" id="landing-content">
-    <div class="landing-eyebrow" data-i18n="landing.eyebrow"></div>
-    <h1 class="landing-title" data-i18n="landing.title"><span>Agricultores</span><span>del Mundo</span></h1>
-    <div class="landing-rule"></div>
-    <p class="landing-subtitle" data-i18n="landing.subtitle">
-      Base de datos global sobre el trabajo agrario en perspectiva histórica
-    </p>
-    <button class="landing-cta" id="landing-cta">
-      <span data-i18n="landing.cta">Explorar</span>
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5v10z" fill="currentColor"/></svg>
-    </button>
-  </div>
-</div>
+  <div class="stage" id="stage"><canvas id="c" aria-hidden="true"></canvas></div>
+</main>
 
-<!-- ============================================================
-     APP — sidebar + main (query bar + viz + timeline) + right panel
-     ============================================================ -->
-<div id="app" class="hidden">
+<div class="tip" id="tip" aria-hidden="true"><b></b><s></s><i></i></div>
 
-  <!-- LEFT SIDEBAR: categorías de indicadores -->
-  <nav class="sidebar">
-    <div class="sb-brand" title="Workers of the World">
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 4v15M7.2 9.2 12 6.8l4.8 2.4M8 13.1l4-2 4 2M8.8 17l3.2-1.6 3.2 1.6" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M6.2 20h11.6" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" opacity=".72"/>
-      </svg>
-    </div>
-    <div class="sb-categories" id="sidebar"></div>
-    <button class="sb-info-btn" id="btn-info" title="Acerca de">
-      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
-    </button>
-  </nav>
+<script src="portada/workers.js"></script>
+<script src="portada/geo-countries.js"></script>
+<script src="portada/world-110m.js"></script>
+<script>
+(function(){
+'use strict';
+var WK=window.WORKERS, GEO=window.GEO_COUNTRIES, TOPO=window.WORLD110;
+var canvas=document.getElementById('c'), stage=document.getElementById('stage');
+var bigEl=document.getElementById('big'), yearEl=document.getElementById('year');
+var tip=document.getElementById('tip'), tipB=tip.querySelector('b'), tipS=tip.querySelector('s'), tipI=tip.querySelector('i');
+var RM=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+var COARSE=!!(window.matchMedia&&window.matchMedia('(pointer:coarse)').matches);
+requestAnimationFrame(function(){document.body.classList.add('on','ready');});
+if(!WK||!canvas.getContext) return;
+var ctx=canvas.getContext('2d');
 
-  <!-- MAIN AREA -->
-  <div class="main">
+/* ---------- ink ---------- */
+var LINO='#EBE2CF', LINO2='#EFE8D8', LAND='#E0C89A',
+    INK='#20211E', INK2='#4C4C44', INK3='#7B7869',
+    DRIL='#2C4A6E', DRIL2='#3E6A99', DRIL_RGB='44,74,110',
+    OCRE='#BE7A14', OCRE_D='#8E5A0B', OCRE_RGB='190,122,20';
 
-    <!-- QUERY BAR: reads like a sentence -->
-    <div class="query-bar">
-      <div class="query-segment">
-        <button class="query-btn query-cat-btn" id="query-cat" title="Categoría">
-          <span id="query-cat-label">Trabajo agrario</span>
-          <svg class="query-chevron" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
-        </button>
-        <div class="query-dropdown" id="query-cat-dropdown"></div>
-      </div>
-      <span class="query-sep">/</span>
-      <div class="query-segment">
-        <button class="query-btn query-ind-btn" id="query-ind" title="Indicador">
-          <span id="query-ind-label">Trabajadores</span>
-          <svg class="query-chevron" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
-        </button>
-        <div class="query-dropdown" id="query-ind-dropdown"></div>
-      </div>
-      <button class="indicator-info-btn" id="indicator-info-btn" type="button" aria-label="Información del indicador" data-info="" hidden>
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/>
-          <path d="M12 10v7M12 7h.01" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>
-        </svg>
-      </button>
-      <div class="indicator-info-popover" id="indicator-info-popover" role="status" hidden></div>
-      <!-- View switcher -->
-      <div class="view-switcher" id="view-switcher">
-        <button class="vw-btn active" data-view="map" title="Mapa" aria-label="Mapa">
-          <svg class="vw-world-map" viewBox="0 0 24 24" aria-hidden="true">
-            <path class="vw-world-frame" d="M3.5 6.6c2.8-1.15 5.6-1.15 8.4 0 2.9 1.2 5.8 1.2 8.6 0v10.8c-2.8 1.15-5.7 1.15-8.6 0-2.8-1.15-5.6-1.15-8.4 0V6.6Z"/>
-            <path class="vw-world-fold" d="M8.8 5.5v12.8M15.2 6.7v11.8"/>
-            <path class="vw-world-land" d="M6.2 8.3c1.2-.45 2.3-.28 3.05.25.45.32.28.86-.27 1.02l-.96.25.36 1.05-.84.52-1.26-.72-.58-1.05.5-1.32Z"/>
-            <path class="vw-world-land" d="M12.35 8.35l1.9.42.82 1.05-.64 1.02-1.45-.18-.92 1.22-1.12-.55.34-1.62 1.07-1.36Z"/>
-            <path class="vw-world-land" d="M17.2 12.55l1.28.48.42 1.44-1.02.98-1.32-.55-.24-1.22.88-1.13Z"/>
-          </svg>
-        </button>
-        <button class="vw-btn" data-view="trend" title="Evolución" aria-label="Evolución">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path class="vw-trend-axis" d="M4.2 18.2h15.8M4.2 18.2V6.2"/>
-            <path class="vw-trend-line" d="M6.9 15.1l3.15-3.75 3.35 2.35 4.65-6.25"/>
-            <circle class="vw-trend-dot" cx="6.9" cy="15.1" r=".72"/><circle class="vw-trend-dot" cx="10.05" cy="11.35" r=".72"/><circle class="vw-trend-dot" cx="13.4" cy="13.7" r=".72"/><circle class="vw-trend-dot" cx="18.05" cy="7.45" r=".72"/>
-          </svg>
-        </button>
-        <button class="vw-btn" data-view="ranking" title="Ranking" aria-label="Ranking">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M5 7.2h3.2M5 12h6.2M5 16.8h9.8"/>
-            <path d="M11 7.2h8M14 12h5M17.6 16.8H19"/>
-          </svg>
-        </button>
-        <button class="vw-btn" data-view="treemap" title="Composición" aria-label="Composición">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M4.2 4.2h7.1v6.2H4.2zM12.7 4.2h7.1v11.2h-7.1zM4.2 11.7h7.1v8.1H4.2zM12.7 16.8h7.1v3h-7.1z"/>
-          </svg>
-        </button>
-        <button class="vw-btn" data-view="table" title="Tabla" aria-label="Tabla">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M4.2 5.2h15.6v13.6H4.2z"/>
-            <path d="M4.2 9.6h15.6M4.2 14h15.6M9.3 5.2v13.6M14.7 5.2v13.6"/>
-          </svg>
-        </button>
-      </div>
-      <div class="selection-bar" id="selection-bar"></div>
-      <div class="query-spacer"></div>
-      <button class="panel-toggle-btn" id="btn-toggle-panel" type="button" title="Mostrar/ocultar opciones" aria-label="Mostrar/ocultar opciones">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path class="panel-settings-core" d="M12 15.35a3.35 3.35 0 1 0 0-6.7 3.35 3.35 0 0 0 0 6.7Z"/>
-          <path class="panel-settings-spokes" d="M12 3.2v2.2M12 18.6v2.2M5.8 5.8l1.56 1.56M16.64 16.64l1.56 1.56M3.2 12h2.2M18.6 12h2.2M5.8 18.2l1.56-1.56M16.64 7.36l1.56-1.56"/>
-        </svg>
-      </button>
+var fmt1=new Intl.NumberFormat('es-ES',{minimumFractionDigits:1,maximumFractionDigits:1});
+var fmt0=new Intl.NumberFormat('es-ES',{maximumFractionDigits:0});
 
-    </div>
+/* country names in Spanish, from the browser's own tables: alpha-3 -> alpha-2 */
+var A3A2='AFGAFAGOAOALBALAREAEARGARARMAMATGAGAUSAUAUTATAZEAZBDIBIBELBEBENBJBFABFBGDBDBGRBGBHRBHBHSBSBIHBABLRBYBLZBZBOLBOBRABRBRBBBBRNBNBTNBTBWABWCAFCFCANCACHECHCHLCLCHNCNCIVCICMRCMCODCDCOGCGCOLCOCOMKMCPVCVCRICRCUBCUCYPCYCZECZDEUDEDJIDJDMADMDNKDKDOMDODZADZECUECEGYEGERIERESPESESTEEETHETFINFIFJIFJFRAFRFSMFMGABGAGBRGBGEOGEGHAGHGINGNGMBGMGNBGWGNQGQGRCGRGRDGDGTMGTGUYGYHNDHNHRVHRHTIHTHUNHUIDNIDINDINIRLIEIRNIRIRQIQISLISISRILITAITJAMJMJORJOJPNJPKAZKZKENKEKGZKGKHMKHKIRKIKORKRKWTKWLAOLALBNLBLBRLRLBYLYLCALCLKALKLSOLSLTULTLUXLULVALVMARMAMDAMDMDGMGMDVMVMEXMXMKDMKMLIMLMLTMTMMRMMMNEMEMNGMNMOZMZMRTMRMUSMUMWIMWMYSMYNAMNANERNENGANGNICNINLDNLNORNONPLNPNZLNZOMNOMPAKPKPANPAPERPEPHLPHPNGPGPOLPLPRIPRPRKKPPRTPTPRYPYQATQAROUROSAUSASDNSDSENSNSGPSGSLBSBSLESLSLVSVSOMSOSRBRSSSDSSSTPSTSURSRSVKSKSVNSISWESESWZSZSYCSCSYRSYTCDTDTGOTGTHATHTJKTJTKMTMTLSTLTONTOTTOTTTUNTNTURTRTUVTVTWNTWTZATZUGAUGUKRUAURYUYUSAUSUZBUZVCTVCVENVEVNMVNVUTVUWSMWSYEMYEZAFZAZMBZMZWEZW';
+var A2={}; (function(){for(var i=0;i+5<=A3A2.length;i+=5)A2[A3A2.substr(i,3)]=A3A2.substr(i+3,2);})();
+var DN=null;
+try{ DN=new Intl.DisplayNames(['es'],{type:'region'}); }catch(e){ DN=null; }
+function esName(iso,fallback){
+  var a2=A2[iso];
+  if(DN&&a2){ try{ var n=DN.of(a2); if(n&&n!==a2) return n; }catch(e){} }
+  return fallback;
+}
 
-    <!-- VIZ CONTAINER -->
-    <div class="viz-container">
-      <div class="viz-panel active" id="panel-map">
-        <div class="map-container" id="map-container">
-          <div class="map-year" id="map-year">2020</div>
-          <svg class="map-svg" id="map-svg"></svg>
-          <div class="map-legend" id="map-legend"></div>
-          <div class="map-tooltip" id="map-tooltip"></div>
-        </div>
-      </div>
-      <div class="viz-panel" id="panel-trend">
-        <div class="chart-container">
-          <svg class="chart-svg" id="trend-svg"></svg>
-          <div class="chart-empty" id="trend-empty">Selecciona uno o más países para ver la evolución</div>
-        </div>
-      </div>
-      <div class="viz-panel" id="panel-ranking">
-        <div class="ranking-container" id="ranking-container"></div>
-      </div>
-      <div class="viz-panel" id="panel-treemap">
-        <div class="treemap-container">
-          <div class="treemap-header" id="treemap-header">Selecciona un país para ver la composición por categoría</div>
-          <div class="treemap-chart" id="treemap-chart"></div>
-        </div>
-      </div>
-      <div class="viz-panel" id="panel-table">
-        <div class="table-container" id="table-container"></div>
-      </div>
-      <div class="viz-panel" id="panel-country">
-        <div class="country-panel-container" id="country-panel-container"></div>
-      </div>
-      <div class="viz-panel" id="panel-about">
-        <div class="about-container" id="about-container"></div>
-      </div>
-    </div>
+/* ---------- series ---------- */
+var years=WK.years, wk=WK.world.workers, N=years.length;
+var Y0=years[0], Y1=years[N-1], firstVal=wk[0], lastVal=wk[N-1];
+var peakIdx=0,i; for(i=1;i<N;i++) if(wk[i]>wk[peakIdx]) peakIdx=i;
+var peakYear=years[peakIdx], peakVal=wk[peakIdx];
 
-    <!-- TIMELINE: slider con play -->
-    <div class="timeline">
-      <button class="tl-play" id="tl-play" title="Reproducir/Pausa">
-        <svg viewBox="0 0 24 24" id="tl-play-icon"><path d="M8 5v14l11-7z"/></svg>
-      </button>
-      <button class="tl-speed" id="tl-speed" title="Velocidad">2x</button>
-      <div class="tl-track" id="tl-track">
-        <div class="tl-rail"></div>
-        <div class="tl-range-fill" id="tl-range-fill"></div>
-        <div class="tl-handle" id="tl-handle-from">
-          <div class="tl-handle-label" id="tl-label-from">1962</div>
-        </div>
-        <div class="tl-handle" id="tl-handle-to">
-          <div class="tl-handle-label" id="tl-label-to">2021</div>
-        </div>
-        <div class="tl-current-handle" id="tl-handle-current" title="Año activo"></div>
-      </div>
-      <input class="tl-year-input tl-year-current-input" id="tl-year-current" type="number" min="1962" max="2021" value="2020" title="Año activo">
-    </div>
+/* ---------- countries: the slices of the 2021 column ---------- */
+var EXTRA={ATG:[-61.8,17.1],BHR:[50.55,26.05],BRB:[-59.55,13.2],CPV:[-23.6,15.1],DMA:[-61.37,15.42],
+  GRD:[-61.68,12.12],KIR:[-157.4,1.87],KNA:[-62.75,17.3],LCA:[-60.98,13.9],MDV:[73.5,3.2],MLT:[14.4,35.9],
+  MUS:[57.55,-20.3],SGP:[103.8,1.35],STP:[6.7,0.25],VCT:[-61.2,13.25],WSM:[-172.1,-13.75]};
+var cs=[];
+Object.keys(WK.countries).forEach(function(iso){
+  var c=WK.countries[iso]; if(!c||!(c.workers_2021>0)) return;
+  var g=(GEO&&GEO[iso])?GEO[iso]:EXTRA[iso]; if(!g) return;
+  cs.push({iso:iso,name:esName(iso,c.name),w:c.workers_2021,w62:c.workers_1962,child:c.pct_child_2021,
+           hpw:c.hpw_2021,ser:c.workers_series||null,lon:g[0],lat:g[1],
+           ph:(iso.charCodeAt(0)*7+iso.charCodeAt(2)*13)%628/100});
+});
+cs.sort(function(a,b){return b.lat-a.lat;});              /* north at the head of the column */
+var NC=cs.length, totW=0, maxW=0, acc=0;
+cs.forEach(function(c){totW+=c.w; if(c.w>maxW) maxW=c.w;});
+cs.forEach(function(c,j){c.idx=j; c.cum0=acc; acc+=c.w; c.cum1=acc;
+  if(c.ser){ var m=0,k; for(k=0;k<c.ser.length;k++) if(c.ser[k]>m) m=c.ser[k]; c.serMax=m; }});
+var byIso={}; cs.forEach(function(c){byIso[c.iso]=c;});
 
-    <!-- FOOTER -->
-    <div class="footer">
-      <span id="footer-source">Fuente: FAO · ILO · World Bank · GSI · pipeline labour (Infante-Amate, UGR)</span>
-      <div class="footer-actions">
-        <button class="footer-btn" id="btn-csv" title="Descargar datos del panel actual">Descargar</button>
-        <button class="footer-btn" id="btn-fs" title="Pantalla completa">Pantalla completa</button>
-      </div>
-    </div>
-  </div>
+// The attract loop labelled Ethiopia and Nigeria with '% child labour' while the other six
+// countries got a neutral measure. Nobody chose that, but the effect was that the only two
+// countries flagged for child labour on the cover were African. A rotating teaser has no room
+// for the context that figure needs, so every country now shows the same kind of measure: how
+// many people work the land, and how that number moved. Child and forced labour live inside the
+// viewer, where they carry their caveats.
+var HL=[{iso:'IND',k:'w'},{iso:'ETH',k:'w'},{iso:'CHN',k:'d'},{iso:'NGA',k:'w'},
+        {iso:'ESP',k:'d'},{iso:'BRA',k:'w'},{iso:'IDN',k:'w'},{iso:'RUS',k:'d'}].map(function(h){
+  var c=byIso[h.iso]; if(!c) return null;
+  var v = h.k==='w' ? fmt1.format(c.w/1e6)+' M de personas · '+Math.round(c.hpw)+' h al año'
+        : h.k==='c' ? fmt1.format(c.child)+' % de trabajo infantil'
+        : 'de '+fmt1.format(c.w62/1e6)+' M en 1962 a '+fmt1.format(c.w/1e6)+' M en 2021';
+  var sh = h.k==='w' ? fmt1.format(c.w/1e6)+' M de personas'
+        : h.k==='c' ? fmt1.format(c.child)+' % de trabajo infantil'
+        : fmt1.format(c.w62/1e6)+' M en 1962 → '+fmt1.format(c.w/1e6)+' M';
+  return {c:c,name:c.name,val:v,short:sh};
+}).filter(Boolean);
 
-  <!-- RIGHT PANEL: opciones / categorías de cultivo / territorios -->
-  <aside class="right-panel" id="right-panel">
-    <button class="right-panel-close" id="right-panel-close" type="button" aria-label="Cerrar opciones">
-      <span>Opciones</span>
-      <strong>Cerrar</strong>
-    </button>
-    <div class="rp-section">
-      <button class="rp-section-header" type="button">OPCIONES</button>
-      <div class="rp-section-body" id="rp-options-body"></div>
-    </div>
-    <div class="rp-section">
-      <button class="rp-section-header" type="button">CATEGORÍAS DE CULTIVO</button>
-      <div class="rp-section-body rp-scrollable" id="rp-crop-body">
-        <div class="rp-search"><input type="text" id="rp-crop-search" placeholder="Buscar categoría..."></div>
-        <div id="rp-crop-list"></div>
-      </div>
-    </div>
-    <div class="rp-section" style="flex:1; min-height: 0;">
-      <button class="rp-section-header" type="button">PAÍSES</button>
-      <div class="rp-section-body rp-scrollable" id="rp-territories-body">
-        <div class="rp-search"><input type="text" id="rp-territory-search" placeholder="Buscar país..."></div>
-        <div id="rp-territory-list"></div>
-      </div>
-    </div>
-  </aside>
-</div>
+/* ---------- TopoJSON decoded here: no library, works on file:// ---------- */
+var RAD=Math.PI/180;
+function ne1(lon,lat){                                    /* Natural Earth I */
+  var l=lon*RAD, p=lat*RAD, p2=p*p, p4=p2*p2;
+  return [l*(0.8707-0.131979*p2+p4*(-0.013791+p4*(0.003971*p2-0.001529*p4))),
+         -p*(1.007226+p2*(0.015085+p4*(-0.044475+0.028874*p2-0.005916*p4)))];
+}
+var landRings=[];
+(function(){
+  if(!TOPO||!TOPO.arcs) return;
+  var sc=TOPO.transform?TOPO.transform.scale:[1,1], tr=TOPO.transform?TOPO.transform.translate:[0,0];
+  var arcs=TOPO.arcs.map(function(a){var x=0,y=0,out=[],j;
+    for(j=0;j<a.length;j++){x+=a[j][0];y+=a[j][1];out.push([x*sc[0]+tr[0],y*sc[1]+tr[1]]);}
+    return out;});
+  function ring(ra){var pts=[],j,k,a2;
+    for(j=0;j<ra.length;j++){var ix=ra[j]; a2=ix<0?arcs[~ix].slice().reverse():arcs[ix];
+      for(k=(pts.length?1:0);k<a2.length;k++) pts.push(a2[k]);}
+    return pts;}
+  TOPO.objects.countries.geometries.forEach(function(g){
+    var id=String(g.id); if(id==='010'||id==='260') return;   /* no Antarctica */
+    var polys=g.type==='Polygon'?[g.arcs]:g.arcs;
+    polys.forEach(function(p){p.forEach(function(r,ri){ if(ri===0) landRings.push(ring(r)); });});
+  });
+})();
 
-<script type="module" src="js/app.js?v=20260522-icons2"></script>
+/* --- the antimeridian, done properly ---------------------------------------
+   Alaska, Chukotka and Fiji all straddle 180 degrees. A ring that steps from
+   +179 to -179 is not a jump on the globe but it IS a jump on a flat sheet, and
+   drawing it raw throws a band right across the ocean. So: unroll each ring so
+   its longitudes stay continuous, then clip it to [-180,180] with the shifted
+   copies it needs. What comes out is closed polygons, never open strokes.      */
+function unwrapRing(r){
+  var out=[[r[0][0],r[0][1]]], shift=0, prev=r[0][0], j, lon, l2;
+  for(j=1;j<r.length;j++){
+    lon=r[j][0];
+    if(lon+shift-prev>180) shift-=360;
+    else if(lon+shift-prev<-180) shift+=360;
+    l2=lon+shift; out.push([l2,r[j][1]]); prev=l2;
+  }
+  return out;
+}
+function clipHalf(poly,edge,keepGreater){
+  var out=[],n=poly.length,i,a,b,ia,ib,t;
+  if(n<3) return out;
+  for(i=0;i<n;i++){
+    a=poly[i]; b=poly[(i+1)%n];
+    ia = keepGreater ? (a[0]>=edge) : (a[0]<=edge);
+    ib = keepGreater ? (b[0]>=edge) : (b[0]<=edge);
+    if(ia) out.push(a);
+    if(ia!==ib && b[0]!==a[0]){
+      t=(edge-a[0])/(b[0]-a[0]);
+      out.push([edge, a[1]+(b[1]-a[1])*t]);
+    }
+  }
+  return out;
+}
+var landParts=[];
+landRings.forEach(function(r0){
+  if(!r0||r0.length<3) return;
+  var r=unwrapRing(r0), lo=Infinity, hi=-Infinity, j;
+  for(j=0;j<r.length;j++){ if(r[j][0]<lo) lo=r[j][0]; if(r[j][0]>hi) hi=r[j][0]; }
+  var s;
+  for(s=-360;s<=360;s+=360){
+    if(hi+s<-180.0001||lo+s>180.0001) continue;
+    var moved=(s===0)?r:r.map(function(p){return [p[0]+s,p[1]];});
+    var q=clipHalf(clipHalf(moved,-180,true),180,false);
+    if(q.length<3) continue;
+    var a=0,k,n=q.length;                                  /* drop slivers of nothing */
+    for(k=0;k<n;k++){ var p1=q[k],p2=q[(k+1)%n]; a+=p1[0]*p2[1]-p2[0]*p1[1]; }
+    if(Math.abs(a)/2<0.004) continue;
+    landParts.push(q);
+  }
+});
+var landRaw=landParts.map(function(r){return r.map(function(p){return ne1(p[0],p[1]);});});
+
+/* graticule and the outline of the world, generated, not fetched */
+var LAT_N=84, LAT_S=-58;                                  /* no Antarctica, no empty caps */
+var gratRaw=[],sphRaw=[],lo,la;
+for(lo=-180;lo<=180;lo+=30){var m=[];for(la=LAT_S;la<=LAT_N;la+=2)m.push(ne1(lo,la));gratRaw.push(m);}
+for(la=-30;la<=60;la+=30){var q=[];for(lo=-180;lo<=180;lo+=5)q.push(ne1(lo,la));gratRaw.push(q);}
+(function(){var f=[];
+  for(la=LAT_N;la>=LAT_S;la-=2)f.push(ne1(180,la));
+  for(lo=180;lo>=-180;lo-=10)f.push(ne1(lo,LAT_S));
+  for(la=LAT_S;la<=LAT_N;la+=2)f.push(ne1(-180,la));
+  for(lo=-180;lo<=180;lo+=10)f.push(ne1(lo,LAT_N));
+  sphRaw=f;})();
+
+var lb=[Infinity,Infinity,-Infinity,-Infinity];
+sphRaw.forEach(function(p){
+  if(p[0]<lb[0])lb[0]=p[0]; if(p[1]<lb[1])lb[1]=p[1];
+  if(p[0]>lb[2])lb[2]=p[0]; if(p[1]>lb[3])lb[3]=p[1];});
+
+/* ---------- layout ---------- */
+var W,H,dpr,mobile,pad,mk,mx,my,mapBot,colW,colX,yBase,yTop,xL,xR,rMax,mapLayer,keyR,keyRects;
+var monoF,monoS;
+function P(p){return [mx+p[0]*mk, my+p[1]*mk];}
+function xs(y){return xL+(y-Y0)/(Y1-Y0)*(xR-xL);}
+function ys(v){return yBase-(v/(peakVal*1.06))*(yBase-yTop);}
+function clamp01(v){return v<0?0:v>1?1:v;}
+function lerp(a,b,u){return a+(b-a)*u;}
+function eInOut(u){return u<.5?4*u*u*u:1-Math.pow(-2*u+2,3)/2;}
+function eOutQ(u){return 1-(1-u)*(1-u);}
+
+function layout(){
+  var r=stage.getBoundingClientRect();
+  W=Math.max(200,Math.round(r.width)); H=Math.max(200,Math.round(r.height));
+  dpr=Math.min(2,window.devicePixelRatio||1);
+  canvas.width=Math.round(W*dpr); canvas.height=Math.round(H*dpr); ctx.setTransform(dpr,0,0,dpr,0,0);
+  mobile=W<560;
+  monoF='500 '+(mobile?10:11.5)+'px "IBM Plex Mono", ui-monospace, Consolas, monospace';
+  monoS='400 '+(mobile?9.5:10.5)+'px "IBM Plex Mono", ui-monospace, Consolas, monospace';
+  pad={l:mobile?10:16,r:mobile?11:18,t:mobile?8:12,b:mobile?20:24};
+
+  yBase=H-pad.b-15;
+  colW=Math.max(6,Math.min(14,W*0.0092));
+  xL=pad.l; xR=W-pad.r-colW/2-1;
+  colX=xs(Y1);
+
+  var bw=lb[2]-lb[0], bh=lb[3]-lb[1];
+  var aw=W-pad.l-pad.r, ah=H*(mobile?0.46:0.47)-pad.t;
+  mk=Math.min(aw/bw,ah/bh);
+  mx=pad.l+(aw-bw*mk)/2-lb[0]*mk;
+  my=pad.t-lb[1]*mk;
+  mapBot=my+lb[3]*mk;
+  yTop=mapBot+(mobile?58:100);
+  rMax=Math.max(8,Math.min(32,aw*0.031));
+
+  var sliceH=yBase-ys(lastVal), top=ys(lastVal);
+  cs.forEach(function(c){
+    var p=P(ne1(c.lon,c.lat)); c.px=p[0]; c.py=p[1];
+    c.r=Math.max(1.1,rMax*Math.sqrt(c.w/maxW));
+    c.sy0=top+sliceH*(c.cum0/totW); c.sy1=top+sliceH*(c.cum1/totW);
+    c.sx=colX; c.syc=(c.sy0+c.sy1)/2;
+    var dx=c.px-c.sx, dy=c.py-c.syc, d=Math.sqrt(dx*dx+dy*dy);
+    c.cx=(c.sx+c.px)/2+dx*0.12; c.cy=Math.min(c.syc,c.py)-Math.min(120,d*0.20)-8;
+    c.t0=4.30+1.05*(c.idx/NC);
+  });
+  colTop=top;
+  keyR={x:pad.l+2,y:mapBot+(mobile?9:16)};
+  buildMap();
+}
+var colTop=0;
+
+function buildMap(){
+  mapLayer=document.createElement('canvas');
+  mapLayer.width=canvas.width; mapLayer.height=canvas.height;
+  var m=mapLayer.getContext('2d'); m.setTransform(dpr,0,0,dpr,0,0);
+  m.lineJoin='round'; m.lineCap='round';
+  function trace(g,pts,close){var j,p=P(pts[0]);g.moveTo(p[0],p[1]);
+    for(j=1;j<pts.length;j++){p=P(pts[j]);g.lineTo(p[0],p[1]);} if(close)g.closePath();}
+  m.beginPath(); trace(m,sphRaw,true);
+  m.fillStyle=LINO2; m.fill();
+  m.strokeStyle='rgba('+DRIL_RGB+',.42)'; m.lineWidth=1.1; m.stroke();
+  m.strokeStyle='rgba('+DRIL_RGB+',.16)'; m.lineWidth=.75; m.beginPath();
+  gratRaw.forEach(function(l){trace(m,l,false);}); m.stroke();
+  m.beginPath(); landRaw.forEach(function(r){trace(m,r,true);});
+  m.fillStyle=LAND; m.fill('evenodd');
+  m.strokeStyle='rgba('+DRIL_RGB+',.50)'; m.lineWidth=.85; m.stroke();
+  /* the invariant the antimeridian fix has to hold: no edge crosses the ocean */
+  var maxE=0;
+  landRaw.forEach(function(r){var j,p0=P(r[0]),p1;
+    for(j=1;j<r.length;j++){p1=P(r[j]);var d=Math.abs(p1[0]-p0[0]);if(d>maxE)maxE=d;p0=p1;}
+    p1=P(r[0]); var d2=Math.abs(p1[0]-p0[0]); if(d2>maxE)maxE=d2;});
+  window.__maxEdge=Math.round(maxE); window.__mapW=Math.round((lb[2]-lb[0])*mk);
+}
+
+/* ---------- pieces of the drawing ---------- */
+function valueAt(pd){
+  var f=pd*(N-1), a=Math.floor(f), b=Math.min(N-1,a+1);
+  return wk[a]+(wk[b]-wk[a])*(f-a);
+}
+function bez(p0,c,p1,u){var a=(1-u)*(1-u),b=2*(1-u)*u,d=u*u;
+  return [a*p0[0]+b*c[0]+d*p1[0], a*p0[1]+b*c[1]+d*p1[1]];}
+
+function chart(alpha,pd){
+  if(alpha<=0)return;
+  ctx.save(); ctx.globalAlpha=alpha; ctx.font=monoS; ctx.textBaseline='alphabetic';
+  var gl=mobile?[300e6,600e6,900e6]:[250e6,500e6,750e6], j, k;
+  var yf=Y0+(Y1-Y0)*pd, iM=Math.min(N-1,Math.floor(yf-Y0));
+  var val=valueAt(pd), penX=xs(yf), penY=ys(val);
+
+  if(pd>0){
+    ctx.beginPath(); ctx.moveTo(xL,yBase);
+    for(k=0;k<=iM;k++) ctx.lineTo(xs(years[k]),ys(wk[k]));
+    if(pd<1) ctx.lineTo(penX,penY);
+    ctx.lineTo(pd<1?penX:colX,yBase); ctx.closePath();
+    ctx.fillStyle='#D0DAE6'; ctx.fill();
+  }
+  ctx.lineWidth=1; ctx.strokeStyle='rgba('+DRIL_RGB+',.17)'; ctx.beginPath();
+  for(var y2=1970;y2<Y1;y2+=10){
+    if(yf<y2) continue;
+    var tx=Math.round(xs(y2))+.5; ctx.moveTo(tx,yBase); ctx.lineTo(tx,ys(wk[y2-Y0])+2);}
+  ctx.stroke();
+  for(j=0;j<gl.length;j++){
+    var gy=Math.round(ys(gl[j]))+.5;
+    ctx.strokeStyle='rgba(32,33,30,.22)'; ctx.beginPath();
+    ctx.moveTo(xL,gy); ctx.lineTo(colX+colW/2,gy); ctx.stroke();
+    ctx.fillStyle=INK2; ctx.textAlign='left'; ctx.fillText((gl[j]/1e6)+' M',xL+3,gy-4);
+  }
+  ctx.strokeStyle='rgba(32,33,30,.45)'; ctx.lineWidth=1; ctx.beginPath();
+  ctx.moveTo(xL,Math.round(yBase)+.5); ctx.lineTo(colX+colW/2,Math.round(yBase)+.5); ctx.stroke();
+  ctx.strokeStyle='rgba(32,33,30,.34)'; ctx.beginPath();
+  for(var y3=1970;y3<Y1;y3+=10){var t3=Math.round(xs(y3))+.5; ctx.moveTo(t3,yBase); ctx.lineTo(t3,yBase+4);}
+  ctx.stroke();
+  ctx.fillStyle=INK3; ctx.textAlign='left'; ctx.fillText(String(Y0),xL,yBase+14);
+  ctx.textAlign='right'; ctx.fillText(String(Y1),colX+colW/2,yBase+14);
+
+  if(pd>0){
+    ctx.beginPath();
+    for(k=0;k<=iM;k++){var lx=xs(years[k]),ly=ys(wk[k]); if(k===0)ctx.moveTo(lx,ly); else ctx.lineTo(lx,ly);}
+    if(pd<1) ctx.lineTo(penX,penY);
+    ctx.strokeStyle=DRIL; ctx.lineWidth=mobile?2:2.6; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.stroke();
+    if(pd<1){
+      ctx.strokeStyle='rgba('+DRIL_RGB+',.34)'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(Math.round(penX)+.5,penY); ctx.lineTo(Math.round(penX)+.5,yBase); ctx.stroke();
+      ctx.fillStyle=OCRE; ctx.beginPath(); ctx.arc(penX,penY,3.4,0,6.2832); ctx.fill();
+      ctx.font=monoF; ctx.fillStyle=INK; ctx.textAlign='center'; ctx.fillText(String(Math.round(yf)),penX,yBase+14);
+    }
+    if(yf>=peakYear&&!mobile&&hoverYear===null){
+      var pa=clamp01((yf-peakYear)/2.2), px=xs(peakYear), py=ys(peakVal);
+      ctx.globalAlpha=alpha*pa;
+      ctx.strokeStyle='rgba(32,33,30,.40)'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(px,py-5); ctx.lineTo(px,py-19); ctx.stroke();
+      ctx.fillStyle=OCRE_D; ctx.font=monoF; ctx.textAlign='center';
+      ctx.fillText('máximo '+fmt1.format(peakVal/1e6)+' M · '+peakYear,px,py-25);
+      ctx.globalAlpha=alpha;
+    }
+  }
+  ctx.restore(); ctx.globalAlpha=1;
+}
+
+/* --- the size key: circles on one baseline, labels clear of every disc ------ */
+function sizeKey(alpha){
+  if(alpha<=0)return;
+  var vals=mobile?[5e6,150e6]:[5e6,50e6,150e6], j, rr, x=keyR.x, y=keyR.y;
+  var rBig=Math.max(2,rMax*Math.sqrt(vals[vals.length-1]/maxW));
+  keyRects={circles:[],labels:[]};
+  ctx.save(); ctx.globalAlpha=alpha; ctx.font=monoS; ctx.textBaseline='middle';
+  {
+    /* concentric discs sharing a baseline, each label out to the right of its arc */
+    ctx.fillStyle=INK3; ctx.textAlign='left';
+    ctx.fillText(mobile?'Un país, un círculo · 2021':'Cada círculo, un país: trabajadores agrarios en 2021',x,y+5);
+    var cx2=x+3+rBig, base2=y+(mobile?12:16)+2*rBig, lx=x+3+2*rBig+11;
+    for(j=vals.length-1;j>=0;j--){
+      rr=Math.max(2,rMax*Math.sqrt(vals[j]/maxW));
+      var cy=base2-rr, top=cy-rr;
+      ctx.beginPath(); ctx.arc(cx2,cy,rr,0,6.2832);
+      ctx.fillStyle=(j===vals.length-1)?'rgba('+DRIL_RGB+',.13)':'rgba('+DRIL_RGB+',.16)'; ctx.fill();
+      ctx.strokeStyle='rgba('+DRIL_RGB+',.85)'; ctx.lineWidth=1; ctx.stroke();
+      ctx.strokeStyle='rgba('+DRIL_RGB+',.42)'; ctx.beginPath();
+      ctx.moveTo(cx2,top); ctx.lineTo(lx-4,top); ctx.stroke();
+      var lab2=(vals[j]/1e6)+' M';
+      ctx.fillStyle=INK2; ctx.textAlign='left'; ctx.fillText(lab2,lx,top);
+      keyRects.circles.push([cx2-rr,top,2*rr,2*rr]);
+      keyRects.labels.push([lx,top-6,ctx.measureText(lab2).width,12]);
+    }
+  }
+  ctx.restore(); ctx.globalAlpha=1;
+}
+
+/* --- the column comes back at the end, as an index of the map --------------- */
+function residualColumn(alpha){
+  if(alpha<=0) return;
+  var x0=colX-colW/2, ci, c;
+  ctx.save(); ctx.globalAlpha=alpha;
+  for(ci=0;ci<NC;ci++){
+    c=cs[ci];
+    var h=Math.max(c.sy1-c.sy0,0.4), on=(hoverC===c);
+    ctx.fillStyle=on?'rgba('+OCRE_RGB+',.95)':'rgba('+DRIL_RGB+',.26)';
+    ctx.fillRect(x0,c.sy0,colW,on?Math.max(h,1.6):h);
+    if(h>2.4&&ci>0){ ctx.fillStyle='rgba(235,226,207,.75)'; ctx.fillRect(x0,c.sy0,colW,0.8); }
+  }
+  ctx.strokeStyle='rgba('+DRIL_RGB+',.45)'; ctx.lineWidth=1;
+  ctx.strokeRect(Math.round(x0)+.5,Math.round(colTop)+.5,colW,Math.round(yBase-colTop));
+  ctx.restore(); ctx.globalAlpha=1;
+}
+
+/* --- what the cursor is asking about --------------------------------------- */
+function countryLine(c,alpha){
+  if(!c||!c.ser||!c.serMax) return;
+  var top=yTop+8, bot=yBase-2, k, n=c.ser.length, lx, ly;
+  ctx.save(); ctx.globalAlpha=alpha;
+  ctx.beginPath();
+  for(k=0;k<n;k++){
+    lx=xs(years[k]); ly=bot-(c.ser[k]/c.serMax)*(bot-top)*0.86;
+    if(k===0) ctx.moveTo(lx,ly); else ctx.lineTo(lx,ly);
+  }
+  ctx.strokeStyle=OCRE; ctx.lineWidth=mobile?1.6:2; ctx.lineJoin='round'; ctx.lineCap='round';
+  ctx.setLineDash([]); ctx.stroke();
+  ctx.fillStyle=OCRE; ctx.beginPath(); ctx.arc(lx,ly,2.8,0,6.2832); ctx.fill();
+  ctx.font=monoS; ctx.fillStyle=OCRE_D; ctx.textAlign='right'; ctx.textBaseline='bottom';
+  ctx.fillText('escala propia',colX-2,top-1);
+  ctx.restore(); ctx.globalAlpha=1;
+}
+
+/* ---------- script ---------- */
+var T_D0=0.35, T_D1=3.80, T_COL=3.80, T_FLY=4.30, FLY=1.50, T_END=7.30, T_HL=6.95, HL_P=3.0, T_RES=6.90;
+var lastBig='', lastYr='';
+var hoverC=null, hoverYear=null;
+
+function render(t){
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle=LINO; ctx.fillRect(0,0,W,H);
+
+  var mapA=0.42+0.58*clamp01((t-(T_FLY-0.4))/1.5);
+  if(mapLayer){ctx.globalAlpha=mapA;ctx.drawImage(mapLayer,0,0,W,H);ctx.globalAlpha=1;}
+
+  var pd=clamp01((t-T_D0)/(T_D1-T_D0)); pd=0.55*pd+0.45*(-(Math.cos(Math.PI*pd)-1)/2);
+  chart(1,pd);
+
+  /* the 2021 column: one slice per country, north at the head */
+  var colA=clamp01((t-T_COL)/0.35), ci,c;
+  if(colA>0){
+    var hairA=clamp01((t-(T_COL+0.15))/0.4), x0=colX-colW/2;
+    for(ci=0;ci<NC;ci++){
+      c=cs[ci]; if(t>=c.t0) continue;
+      ctx.globalAlpha=colA; ctx.fillStyle=DRIL;
+      ctx.fillRect(x0,c.sy0,colW,Math.max(c.sy1-c.sy0,0.35));
+      if(hairA>0&&(c.sy1-c.sy0)>2.2&&ci>0){
+        ctx.globalAlpha=colA*hairA*0.85; ctx.fillStyle=LINO; ctx.fillRect(x0,c.sy0,colW,1);}
+    }
+    ctx.globalAlpha=1;
+  }
+
+  /* it unfolds: each slice flies to its place on the world */
+  var dim=(hoverC!==null);
+  for(ci=0;ci<NC;ci++){
+    c=cs[ci]; if(t<c.t0) continue;
+    var u=clamp01((t-c.t0)/FLY), e=eInOut(u);
+    var p=bez([c.sx,c.syc],[c.cx,c.cy],[c.px,c.py],e);
+    var r0=Math.max(0.6,Math.min(colW/2,(c.sy1-c.sy0)/2));
+    var rr=lerp(r0,c.r,eOutQ(u));
+    if(u>=1&&!RM&&!dim) rr*=1+0.03*Math.sin(t*1.9+c.ph);
+    if(u<1){
+      var pb=bez([c.sx,c.syc],[c.cx,c.cy],[c.px,c.py],eInOut(Math.max(0,u-0.07)));
+      ctx.strokeStyle='rgba('+DRIL_RGB+',.30)'; ctx.lineWidth=Math.max(0.8,rr*0.85); ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(pb[0],pb[1]); ctx.lineTo(p[0],p[1]); ctx.stroke();
+    }
+    var a = dim ? (c===hoverC?0.92:0.22) : (u<1?0.88:0.78);
+    ctx.beginPath(); ctx.arc(p[0],p[1],rr,0,6.2832);
+    ctx.fillStyle='rgba('+DRIL_RGB+','+a.toFixed(2)+')'; ctx.fill();
+    if(rr>1.8){ctx.strokeStyle='rgba('+DRIL_RGB+','+(dim&&c!==hoverC?0.28:0.95)+')'; ctx.lineWidth=1; ctx.stroke();}
+  }
+
+  sizeKey(clamp01((t-(T_FLY+0.5))/0.8));
+  residualColumn(0.92*clamp01((t-T_RES)/0.6));
+
+  /* the country under the cursor: ringed on the map, drawn on the series */
+  if(hoverC){
+    ctx.save();
+    ctx.strokeStyle=OCRE; ctx.lineWidth=1.8;
+    ctx.beginPath(); ctx.arc(hoverC.px,hoverC.py,hoverC.r+4.5,0,6.2832); ctx.stroke();
+    ctx.setLineDash([2,3]); ctx.strokeStyle='rgba('+OCRE_RGB+',.55)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(hoverC.px,hoverC.py+hoverC.r+5); ctx.lineTo(hoverC.px,mapBot); ctx.stroke();
+    ctx.setLineDash([]); ctx.restore();
+    countryLine(hoverC,0.95);
+  }
+
+  /* one country at a time says its figure, but only while nobody is asking */
+  if(HL.length&&!hoverC&&hoverYear===null&&(RM||t>=T_HL)){
+    var hi,ha;
+    if(RM){hi=0;ha=1;}
+    else{var th=t-T_HL; hi=Math.floor(th/HL_P)%HL.length; var phz=th-Math.floor(th/HL_P)*HL_P;
+      ha=Math.min(clamp01(phz/0.45),clamp01((HL_P-phz)/0.45));}
+    var h=HL[hi], cc=h.c, hv=(mobile&&h.short)?h.short:h.val;
+    ctx.save(); ctx.globalAlpha=ha;
+    ctx.strokeStyle=OCRE; ctx.lineWidth=1.6;
+    ctx.beginPath(); ctx.arc(cc.px,cc.py,cc.r+4,0,6.2832); ctx.stroke();
+    ctx.font='700 '+(mobile?12:14)+'px Archivo, Helvetica, Arial, sans-serif';
+    var nw=ctx.measureText(h.name).width;
+    ctx.font=monoS; var vw=ctx.measureText(hv).width;
+    var lw=Math.max(nw,vw), gap=cc.r+15;
+    var right=(cc.px+gap+lw+8<=W-pad.r), lx2=right?cc.px+gap:cc.px-gap, ly=cc.py-3;
+    if(ly-14<pad.t) ly=pad.t+18;
+    if(ly+15>mapBot) ly=mapBot-15;
+    var bx=right?lx2-6:lx2-lw-6;
+    if(bx<pad.l){ bx=pad.l; }
+    if(bx+lw+12>W-pad.r){ bx=Math.max(pad.l,W-pad.r-lw-12); }
+    lx2=bx+6;
+    ctx.strokeStyle='rgba(32,33,30,.45)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(right?cc.px+cc.r+4:cc.px-cc.r-4,cc.py); ctx.lineTo(right?bx:bx+lw+12,ly+3); ctx.stroke();
+    ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+    ctx.fillStyle='rgba(239,232,216,.94)'; ctx.fillRect(bx,ly-14,lw+12,33);
+    ctx.strokeStyle='rgba('+DRIL_RGB+',.38)'; ctx.lineWidth=1;
+    ctx.strokeRect(bx+.5,ly-13.5,lw+11,32);
+    ctx.fillStyle=INK; ctx.font='700 '+(mobile?12:14)+'px Archivo, Helvetica, Arial, sans-serif';
+    ctx.fillText(h.name,lx2,ly);
+    ctx.fillStyle=OCRE_D; ctx.font=monoS; ctx.fillText(hv,lx2,ly+14);
+    ctx.restore(); ctx.globalAlpha=1;
+  }
+
+  /* the series answers too: a plumb line at the year under the cursor */
+  if(hoverYear!==null){
+    var hx=xs(hoverYear), hv=wk[hoverYear-Y0], hy=ys(hv);
+    ctx.save();
+    ctx.strokeStyle='rgba(32,33,30,.55)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(Math.round(hx)+.5,hy-6); ctx.lineTo(Math.round(hx)+.5,yBase); ctx.stroke();
+    ctx.fillStyle=OCRE; ctx.beginPath(); ctx.arc(hx,hy,3.6,0,6.2832); ctx.fill();
+    ctx.strokeStyle='rgba(32,33,30,.5)'; ctx.lineWidth=1; ctx.stroke();
+    if(hoverC&&hoverC.ser){
+      var top=yTop+8, bot=yBase-2;
+      var cy2=bot-(hoverC.ser[hoverYear-Y0]/hoverC.serMax)*(bot-top)*0.86;
+      ctx.fillStyle=OCRE_D; ctx.beginPath(); ctx.arc(hx,cy2,3,0,6.2832); ctx.fill();
+    }
+    ctx.font=monoF; ctx.fillStyle=INK; ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+    ctx.fillText(String(hoverYear),hx,yBase+14);
+    ctx.restore();
+  }
+
+  /* the numeral in the column of text counts the series up, or reads the cursor */
+  var sv,sy;
+  if(hoverYear!==null){ sv=wk[hoverYear-Y0]; sy=hoverYear; }
+  else { sv=pd>=1?lastVal:valueAt(pd); sy=pd>=1?Y1:Math.round(Y0+(Y1-Y0)*pd); }
+  var b2=fmt1.format(sv/1e6); if(b2!==lastBig){bigEl.textContent=b2;lastBig=b2;}
+  var yv=String(sy); if(yv!==lastYr){yearEl.textContent=yv;lastYr=yv;}
+}
+
+/* ---------- clock, skip, resize ---------- */
+var t0=null,raf=null,hidAt=null,off=0,frames=0,fpsT0=0;
+window.__fps=0;
+function frame(now){raf=null; if(t0===null)t0=now;
+  frames++; if(!fpsT0) fpsT0=now;
+  if(now-fpsT0>=500){ window.__fps=Math.round(frames*1000/(now-fpsT0)); frames=0; fpsT0=now; }
+  render((now-t0)/1000+off);
+  if(!document.hidden) raf=requestAnimationFrame(frame);}
+function finish(){if(RM)return; var now=performance.now(); if(t0===null)t0=now;
+  var t=(now-t0)/1000+off; if(t<T_END) off+=T_END-t;}
+function nowT(){ if(RM) return T_END+0.01; if(t0===null) return 0; return (performance.now()-t0)/1000+off; }
+function start(){layout(); if(RM){render(T_END+0.01);return;} raf=requestAnimationFrame(frame);}
+document.addEventListener('visibilitychange',function(){if(RM)return;
+  if(document.hidden){if(raf){cancelAnimationFrame(raf);raf=null;}hidAt=performance.now();}
+  else{if(hidAt!==null&&t0!==null)t0+=performance.now()-hidAt; hidAt=null; if(!raf)raf=requestAnimationFrame(frame);}});
+var rt=null;
+function onResize(){clearTimeout(rt);rt=setTimeout(function(){clearHover();layout(); if(RM)render(T_END+0.01);},70);}
+window.addEventListener('resize',onResize); window.addEventListener('orientationchange',onResize);
+document.addEventListener('pointerdown',function(e){if(e.target.closest&&e.target.closest('a,button'))return;finish();});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){finish();clearHover();}});
+window.addEventListener('wheel',finish,{passive:true}); window.addEventListener('touchmove',finish,{passive:true});
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(function(){layout(); if(RM)render(T_END+0.01);});
+
+/* =======================================================================
+   Once the column has unfolded the plate answers back. The map and the
+   series are the same data, so touching one has to move the other.
+   ======================================================================= */
+function live(){ return RM || nowT()>=T_RES; }
+function showTip(name,fig,unit,detail,px,py){
+  tipB.textContent=name;
+  tipS.innerHTML='';
+  tipS.appendChild(document.createTextNode(fig));
+  if(unit){ var em=document.createElement('em'); em.textContent=unit; tipS.appendChild(em); }
+  tipI.textContent=detail;
+  tip.classList.add('on');
+  var r=tip.getBoundingClientRect(), w=r.width||200, h=r.height||76, x, y;
+  if(COARSE){
+    var sr=stage.getBoundingClientRect();
+    x=Math.min(Math.max(8,sr.left+8),Math.max(8,window.innerWidth-w-8));
+    y=(py>sr.top+sr.height/2)?sr.top+8:sr.bottom-h-8;
+  }else{
+    x=px+16; y=py-h-12;
+    if(x+w>window.innerWidth-8) x=px-w-16;
+    if(x<8) x=8;
+    if(y<8) y=py+20;
+  }
+  if(y+h>window.innerHeight-8) y=Math.max(8,window.innerHeight-h-8);
+  if(y<8) y=8;
+  tip.style.transform='translate('+Math.round(x)+'px,'+Math.round(y)+'px)';
+}
+function clearHover(){
+  if(!hoverC&&hoverYear===null) return;
+  hoverC=null; hoverYear=null; tip.classList.remove('on');
+  document.body.classList.remove('probing');
+  if(RM) render(T_END+0.01);
+}
+function tellCountry(c,px,py){
+  var d=fmt1.format(c.w62/1e6)+' M en 1962 · '+Math.round(c.hpw)+' h al año';
+  if(c.child>0) d+=' · '+fmt1.format(c.child)+' % de trabajo infantil';
+  if(hoverYear!==null&&c.ser) d='en '+hoverYear+': '+fmt1.format(c.ser[hoverYear-Y0]/1e6)+' M · '+d;
+  showTip(c.name, fmt1.format(c.w/1e6), ' M en 2021', d, px, py);
+}
+function pick(lx,ly,px,py){
+  if(!live()) return;
+  document.body.classList.add('touched');
+  var hz=COARSE?20:6, ci, c;
+  /* the column that came back is an index: a row of it is a country */
+  if(lx>=colX-colW/2-hz && lx<=colX+colW/2+hz && ly>=colTop-6 && ly<=yBase+6){
+    var best=null,bd=1e9;
+    for(ci=0;ci<NC;ci++){ c=cs[ci];
+      if(ly>=c.sy0&&ly<=c.sy1){ best=c; break; }
+      var d=Math.abs((c.sy0+c.sy1)/2-ly); if(d<bd){bd=d;best=c;} }
+    if(best){ hoverC=best; hoverYear=null; document.body.classList.remove('probing');
+              tellCountry(best,px,py); if(RM) render(T_END+0.01); return; }
+  }
+  /* the map: the nearest disc that the cursor is actually near */
+  if(ly<=mapBot+10){
+    var pickR=COARSE?22:10, bc=null, bdist=1e9;
+    for(ci=0;ci<NC;ci++){ c=cs[ci];
+      var dx=c.px-lx, dy=c.py-ly, dd=Math.sqrt(dx*dx+dy*dy);
+      if(dd<=Math.max(c.r+pickR*0.5,pickR) && dd-c.r<bdist){ bdist=dd-c.r; bc=c; } }
+    if(bc){ hoverC=bc; hoverYear=null; document.body.classList.remove('probing');
+            tellCountry(bc,px,py); if(RM) render(T_END+0.01); return; }
+    if(hoverC||hoverYear!==null) clearHover();
+    return;
+  }
+  /* the series: a year, read off the world total */
+  if(ly>=yTop-18 && ly<=yBase+18 && lx>=xL-4 && lx<=colX+colW){
+    var yr=Math.round(Y0+(lx-xL)/(xR-xL)*(Y1-Y0));
+    yr=Math.max(Y0,Math.min(Y1,yr));
+    hoverYear=yr; document.body.classList.add('probing');
+    if(hoverC) tellCountry(hoverC,px,py);
+    else{
+      var v=wk[yr-Y0], d0=(v-firstVal)/firstVal*100;
+      showTip(String(yr), fmt1.format(v/1e6), ' M', 'trabajadores agrarios en el mundo · '+
+        (d0>=0?'+':'−')+fmt1.format(Math.abs(d0))+' % desde 1962', px, py);
+    }
+    if(RM) render(T_END+0.01);
+    return;
+  }
+  clearHover();
+}
+var uiRaf=0, pend=null;
+function schedule(f){ pend=f; if(uiRaf) return;
+  uiRaf=requestAnimationFrame(function(){uiRaf=0;var g=pend;pend=null;if(g)g();}); }
+stage.addEventListener('pointermove',function(e){
+  var r=stage.getBoundingClientRect(), lx=e.clientX-r.left, ly=e.clientY-r.top,
+      px=e.clientX, py=e.clientY;
+  schedule(function(){ pick(lx,ly,px,py); });
+});
+stage.addEventListener('pointerdown',function(e){
+  var r=stage.getBoundingClientRect(), lx=e.clientX-r.left, ly=e.clientY-r.top,
+      px=e.clientX, py=e.clientY;
+  setTimeout(function(){ pick(lx,ly,px,py); },40);
+},{passive:true});
+stage.addEventListener('pointerleave',function(){ if(!COARSE) clearHover(); });
+document.addEventListener('pointerdown',function(e){
+  if(e.target.closest&&e.target.closest('#stage')) return;
+  clearHover();
+},{passive:true});
+
+window.__keyRects=function(){ return keyRects; };
+window.__probe=function(){ return {fps:window.__fps,maxEdge:window.__maxEdge,mapW:window.__mapW,
+                                   hover:hoverC?hoverC.iso:null,year:hoverYear,nc:NC,parts:landRaw.length}; };
+start();
+})();
+</script>
 </body>
 </html>
-

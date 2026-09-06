@@ -1,10 +1,10 @@
 // Right panel: controls, crop categories and countries.
 
-import { State } from './state.js';
-import { DataLoader } from './data-loader.js?v=20260522-tildes1';
-import { getCategory, getIndicator } from './indicators.js?v=20260522-tildes1';
-import { indicatorInfo } from './indicator-info.js?v=20260522-tildes1';
-import { escapeHtml, formatCategoryLabel, normalizeSearchText } from './labels.js';
+import { State } from './state.js?v=20260906f';
+import { DataLoader } from './data-loader.js?v=20260906f';
+import { getCategory, getIndicator } from './indicators.js?v=20260906f';
+import { indicatorInfo } from './indicator-info.js?v=20260906f';
+import { escapeHtml, formatCategoryLabel, normalizeSearchText } from './labels.js?v=20260906f';
 import {
   FUNCTIONAL_UNITS,
   FOOTPRINT_FLOWS,
@@ -15,7 +15,7 @@ import {
   resolveMetric,
   selectedFootprintFlows,
   supportsCropCategory,
-} from './metric.js?v=20260522-tildes1';
+} from './metric.js?v=20260906f';
 
 export async function initRightPanel() {
   initPanelSections();

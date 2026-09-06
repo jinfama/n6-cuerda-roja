@@ -1,9 +1,9 @@
 // Top query bar that reads like a sentence: "Category / Indicator".
 
-import { State } from './state.js';
-import { CATEGORIES, getCategory, getIndicator } from './indicators.js?v=20260522-tildes1';
-import { indicatorInfo } from './indicator-info.js?v=20260522-tildes1';
-import { resolveMetric } from './metric.js?v=20260522-tildes1';
+import { State } from './state.js?v=20260906f';
+import { CATEGORIES, getCategory, getIndicator } from './indicators.js?v=20260906f';
+import { indicatorInfo } from './indicator-info.js?v=20260906f';
+import { resolveMetric } from './metric.js?v=20260906f';
 
 export function initQueryBar({ onCategoryChange, onIndicatorChange }) {
   const catBtn      = document.getElementById('query-cat');

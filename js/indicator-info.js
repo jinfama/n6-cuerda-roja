@@ -25,8 +25,8 @@ const INFO = {
     pct_not_covered: 'Porcentaje de trabajadores sin cobertura de protección social. Resume vulnerabilidad institucional del trabajo agrario.',
     hours_not_covered: 'Horas anuales de trabajo agrario realizadas por trabajadores sin cobertura de protección social.',
     fp_hours_total: 'Horas anuales asociadas a la huella comercial agraria. El flujo permite separar huella de consumo, horas importadas, horas exportadas y horas domésticas.',
-    fp_hours_child: 'Horas de trabajo infantil embebidas en productos agrarios comerciados. Indicador sensible sujeto a cobertura social desigual.',
-    fp_hours_forced: 'Horas de trabajo forzoso embebidas en productos agrarios comerciados. Indicador de riesgo social, no observación directa universal.',
+    fp_hours_child: 'Horas de trabajo infantil en la producción agraria del propio país, obtenidas aplicando el porcentaje estimado al total anual de horas agrarias. AVISO: NO es una huella de comercio; no mide el trabajo infantil incorporado en lo que cada país importa. Esa huella aún no está calculada. Indicador sensible, con cobertura social desigual entre países.',
+    fp_hours_forced: 'Horas de trabajo forzoso en la producción agraria del propio país, obtenidas aplicando el porcentaje estimado al total anual de horas agrarias. AVISO: NO es una huella de comercio. Indicador de riesgo social, no observación directa universal.',
   },
   en: {
     workers: 'People employed in agricultural activities, allocated by country, year and product category to reconstruct total agricultural labour.',
@@ -52,8 +52,8 @@ const INFO = {
     pct_not_covered: 'Share of workers without social protection coverage. Summarises institutional vulnerability in agricultural labour.',
     hours_not_covered: 'Annual agricultural labour hours performed by workers without social protection coverage.',
     fp_hours_total: 'Annual labour hours associated with the agricultural trade footprint. The flow separates the consumption footprint, imported hours, exported hours and domestic hours.',
-    fp_hours_child: 'Child-labour hours embedded in traded agricultural products. A sensitive indicator with uneven social-source coverage.',
-    fp_hours_forced: 'Forced-labour hours embedded in traded agricultural products. A social risk indicator, not universal direct observation.',
+    fp_hours_child: 'Child-labour hours in the country’s own agricultural output, derived by applying the estimated share to total annual agricultural hours. NOTE: this is NOT a trade footprint; it does not measure child labour embodied in what a country imports. That footprint has not been computed yet. A sensitive indicator with uneven social-source coverage.',
+    fp_hours_forced: 'Forced-labour hours in the country’s own agricultural output, derived by applying the estimated share to total annual agricultural hours. NOTE: this is NOT a trade footprint. A social risk indicator, not universal direct observation.',
   },
 };
 

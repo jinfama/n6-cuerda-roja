@@ -1,0 +1,198 @@
+/* provenance.css — styles for the "Como trabajamos" methods section.
+   Copied verbatim into each viewer alongside js/methods/provenance-panel.js.
+   Mobile first: panels stack, the coverage matrix owns its own horizontal scroll, and every
+   hit target that a finger has to reach is at least 44 px. */
+
+.pv-section { max-width: 1100px; margin: 0 auto; padding: 20px 16px 64px; }
+
+.pv-section h2 { font-size: 1.5rem; margin: 0 0 .4em; }
+.pv-section h3 { font-size: 1.05rem; margin: 0; }
+
+.pv-prose { max-width: 68ch; line-height: 1.62; font-size: 1rem; }
+.pv-prose p { margin: 0 0 1em; }
+.pv-prose strong { font-weight: 650; }
+
+.pv-headline {
+    display: flex; flex-wrap: wrap; gap: 10px 22px;
+    margin: 18px 0 26px; padding: 14px 16px;
+    background: #f6f4ef; border: 1px solid #e2ded4; border-radius: 0;
+}
+.pv-headline div { min-width: 120px; }
+.pv-headline b { display: block; font-size: 1.35rem; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.pv-headline span { font-size: .8rem; color: #5d5a52; }
+
+/* ── one series panel ───────────────────────────────────────────────────────────────── */
+
+.pv-grid { display: grid; gap: 22px; grid-template-columns: 1fr; }
+@media (min-width: 900px) { .pv-grid { grid-template-columns: 1fr 1fr; } }
+
+.pv-panel {
+    border: 1px solid #e2ded4; border-radius: 0; padding: 14px 16px 16px; background: #FCF9F0;
+}
+.pv-head { margin-bottom: 10px; }
+.pv-sub { margin: 2px 0 0; font-size: .82rem; color: #5d5a52; }
+
+.pv-bar {
+    display: flex; height: 9px; border-radius: 0; overflow: hidden;
+    background: #e8e6e1; margin: 8px 0 6px;
+}
+.pv-bar-seg { display: block; height: 100%; }
+.pv-bar-seg.obs { background: #1a4d2e; }
+.pv-bar-seg.est { background: #e0b070; }
+.pv-bar-seg.nod { background: #d6d3cc; }
+.pv-bar-cap { margin: 0 0 10px; font-size: .8rem; color: #5d5a52; line-height: 1.45; }
+
+.pv-chart { width: 100%; }
+.pv-chart svg { width: 100%; height: auto; display: block; }
+.pv-axis text { font-size: 10.5px; fill: #6b675f; }
+.pv-axis path, .pv-axis line { stroke: #d6d3cc; }
+
+.pv-legend {
+    list-style: none; margin: 8px 0 0; padding: 0;
+    display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .78rem; color: #4a473f;
+}
+.pv-legend li { display: flex; align-items: center; gap: 6px; }
+.pv-sw {
+    width: 10px; height: 10px; border-radius: 0; display: inline-block;
+    border: 1px solid rgba(0, 0, 0, .18); flex: 0 0 auto; margin-right: 3px;
+}
+
+.pv-actions {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 12px;
+}
+.pv-toggle {
+    display: flex; align-items: center; gap: 8px;
+    font-size: .84rem; cursor: pointer; min-height: 44px;
+}
+.pv-toggle input { width: 22px; height: 22px; cursor: pointer; flex: 0 0 auto; }
+/* The whole label is the hit target (the input sits inside it), and it clears 44 px. */
+.pv-toggle { padding: 0 4px; }
+.pv-dl {
+    font: inherit; font-size: .82rem; min-height: 44px; padding: 0 14px;
+    border: 1px solid #c9c4b8; border-radius: 0; background: #f6f4ef;
+    color: #2c2a25; cursor: pointer;
+}
+.pv-dl:hover { background: #eeebe3; }
+.pv-dl:focus-visible { outline: 2px solid #1a4d2e; outline-offset: 2px; }
+
+.pv-empty { font-size: .85rem; color: #6b675f; padding: 20px 0; }
+
+/* ── coverage matrix ────────────────────────────────────────────────────────────────── */
+
+.pv-matrix-scroll {
+    overflow: auto; -webkit-overflow-scrolling: touch;
+    max-height: min(70vh, 620px);
+    border: 1px solid #e2ded4; border-radius: 0; background: #FCF9F0; padding: 6px 0;
+}
+.pv-mx-label { font-size: 9.5px; fill: #5d5a52; }
+
+/* ── tooltip (shared by the series chart and the matrix) ────────────────────────────── */
+
+.pv-tip {
+    position: fixed; z-index: 9999; display: none; pointer-events: none;
+    max-width: min(300px, calc(100vw - 24px));
+    background: #fffdf8; color: #23211d;
+    border: 1px solid #cfc9bb; border-radius: 0;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, .16);
+    padding: 9px 11px; font-size: .8rem; line-height: 1.4;
+}
+.pv-tip-h { font-weight: 650; margin-bottom: 2px; }
+.pv-tip-v { font-size: 1.05rem; font-variant-numeric: tabular-nums; margin-bottom: 5px; }
+.pv-chip {
+    display: inline-block; color: #fff; border-radius: 0;
+    padding: 1px 7px; font-size: .7rem; letter-spacing: .02em; margin-bottom: 6px;
+}
+.pv-tip-dl { display: grid; grid-template-columns: auto 1fr; gap: 1px 8px; margin: 0; }
+.pv-tip-dl dt { color: #6b675f; font-size: .74rem; }
+.pv-tip-dl dd { margin: 0; font-size: .78rem; }
+.pv-tip-note {
+    margin-top: 6px; padding-top: 6px; border-top: 1px solid #e6e1d6;
+    font-size: .72rem; color: #6b675f;
+}
+
+/* ── limits and sources ─────────────────────────────────────────────────────────────── */
+
+.pv-limits { margin: 28px 0 0; padding: 14px 16px; background: #fdf8ee;
+             border: 1px solid #ead9bb; border-radius: 0; }
+.pv-limits h3 { margin-bottom: 8px; }
+.pv-limits ul { margin: 0; padding-left: 1.15em; font-size: .88rem; line-height: 1.55; }
+.pv-limits li { margin-bottom: .4em; }
+
+.pv-sources { margin-top: 22px; font-size: .85rem; }
+.pv-sources table { border-collapse: collapse; width: 100%; }
+.pv-sources th, .pv-sources td {
+    text-align: left; padding: 5px 10px 5px 0; border-bottom: 1px solid #ece8df;
+}
+.pv-sources td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+    .pv-panel *, .pv-matrix-scroll * { transition: none !important; animation: none !important; }
+}
+
+/* ── Adaptación a «Agricultores del Mundo» ──────────────────────────────────────────────
+   El kit viene con la paleta crema del Atlas de Andalucía. Aquí se ajusta al verde-petróleo
+   de este visor y se añaden las dos piezas propias de esta sección: el aviso de borrador y
+   el bloque de «lo que todavía no puede decirle». */
+
+.about-tabs {
+    display: flex; gap: 4px; flex-wrap: wrap;
+    margin: 0 0 18px; padding: 0;
+    border-bottom: 1px solid var(--c-border, #d8e2e2);
+}
+.about-tab {
+    font: inherit; font-size: 12.5px; font-weight: 650; letter-spacing: .2px;
+    min-height: 44px; padding: 0 14px; cursor: pointer;
+    border: 1px solid transparent; border-bottom: 0; background: none;
+    color: var(--c-text-2, #4c5f61);
+}
+.about-tab:hover { color: var(--c-primary, #214B52); }
+.about-tab.active {
+    color: var(--c-primary, #214B52);
+    background: #FCF9F0;
+    border-color: var(--c-border, #d8e2e2);
+    box-shadow: inset 0 2px 0 var(--c-primary, #214B52);
+}
+.about-tab:focus-visible { outline: 2px solid var(--c-primary, #2C4A6E); outline-offset: -2px; }
+
+.pv-draft {
+    max-width: 68ch; margin: 0 0 18px; padding: 9px 12px;
+    background: #fdf8ee; border: 1px solid #ead9bb; border-radius: 0;
+    font-size: .82rem; line-height: 1.45; color: #6b5a35;
+}
+.pv-missing { background: var(--c-bg-s); border-color: var(--c-border); }
+.pv-section h2, .pv-section h3 { color: var(--c-primary); font-family: var(--ff-display);
+    font-variation-settings: 'wdth' 104; font-weight: 720; letter-spacing: -.01em; }
+.pv-headline { background: var(--c-bg-s); border-color: var(--c-border); }
+.pv-panel { border-color: var(--c-border); background: var(--c-paper); }
+.pv-matrix-scroll { border-color: var(--c-border); background: var(--c-paper); }
+.pv-dl { background: var(--c-bg-s); border-color: var(--c-border); color: var(--c-primary); }
+.pv-dl:hover { background: var(--c-bg-h); }
+.pv-dl:focus-visible { outline-color: var(--c-primary); }
+.pv-sources code, .pv-limits code {
+    font-family: var(--ff-mono);
+    font-size: .82em; background: var(--c-bg-s); padding: 1px 4px; border-radius: 0;
+}
+/* The kit ships with the cream of another viewer; here it wears the cover's lino,
+   ink and brass. The observed/estimated ramp of .pv-bar-seg is data, so it stays. */
+.pv-headline span, .pv-sub, .pv-bar-cap, .pv-empty,
+.pv-tip-dl dt, .pv-tip-note { color: var(--c-text-3); }
+.pv-mx-label { fill: var(--c-text-3); }
+.pv-axis text { fill: var(--c-text-3); }
+.pv-axis path, .pv-axis line { stroke: var(--c-border); }
+.pv-legend { color: var(--c-text-2); font-family: var(--ff-mono); font-size: .72rem; }
+.pv-bar { background: var(--c-bg-h); }
+.pv-tip { background: var(--c-paper); color: var(--c-text); border-color: var(--c-border); }
+.pv-tip-note { border-top-color: var(--c-border-lt); }
+.pv-limits { background: var(--c-bg-s); border-color: var(--c-border); }
+.pv-draft { background: var(--c-bg-s); border-color: var(--c-border); color: var(--c-text-2); }
+.pv-sources th, .pv-sources td { border-bottom-color: var(--c-border-lt); }
+.about-tab { font-family: var(--ff); }
+.about-tab.active { background: var(--c-paper); }
+
+/* The About view scrolls inside its own pane, so the section must not add page scroll. */
+.pv-section { max-width: 1100px; padding: 0 0 48px; }
+@media (max-width: 700px) {
+    .pv-section { padding: 0 0 40px; }
+    .pv-section h2 { font-size: 1.3rem; }
+    .pv-prose { font-size: .94rem; }
+}

@@ -1,7 +1,7 @@
 // Left dark sidebar — categories of indicators.
 
-import { State } from './state.js';
-import { CATEGORIES, ICON_PATHS } from './indicators.js?v=20260522-tildes1';
+import { State } from './state.js?v=20260906f';
+import { CATEGORIES, ICON_PATHS } from './indicators.js?v=20260906f';
 
 function icon(name) {
   const d = ICON_PATHS[name] || '';
