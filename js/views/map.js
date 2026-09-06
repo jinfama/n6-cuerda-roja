@@ -6,38 +6,141 @@ import { State } from '../state.js?v=20260906f';
 import { DataLoader } from '../data-loader.js?v=20260906f';
 import { getIndicator } from '../indicators.js?v=20260906f';
 import { escapeHtml, formatCategoryLabel } from '../labels.js?v=20260906f';
-import { metricValue, resolveMetric, supportsCropCategory } from '../metric.js?v=20260906f';
+import { metricValue, metricYearRange, resolveMetric, supportsCropCategory } from '../metric.js?v=20260906f';
 import { enrichRegionalData } from '../regional-estimates.js?v=20260906f';
 import { registerExport } from '../export-csv.js?v=20260906f';
 
+// ---------------------------------------------------------------------------
+// Data ramps of the map. Reviewed on 6 September 2026 at the author's request
+// (see CLAUDE.md, section "Escalas de mapa"). They are NOT chrome: they are the
+// encoding, and they are chosen by measurement, not by taste.
+//
+// Three sequential families plus a neutral base for the trade layer, all born
+// of the approved cover V5_columna-desdoblada (lino, dril, ocre):
+//   dril    quantities and rhythms       cool linen -> #2C4A6E -> #1B2F47
+//   patina  money per person             oxidised-brass green
+//   oxido   alarm indicators (ind.warn)  rust red, never brass
+//   arena   base under the trade arcs    neutral earth, so the arcs read on top
+// The ocre #BE7A14 is the chrome accent (selection ring, rules, buttons) and is
+// therefore absent from every data ramp: a datum must never look like a button.
+//
+// Measured on the real map (177 units, 2021, pooled 1962-2021 domain): the 7
+// classes plus "sin dato" plus "cero" give 9/9 tones separable at dE76 >= 5,
+// 9/9 at CIEDE2000 >= 5, and 9/9 under both deuteranopia and protanopia
+// (Vienot-Brettel-Mollon 1999). Smallest step between contiguous classes:
+// 10.7 dE76 / 8.2 dE2000 (dril), 10.1 / 7.5 (arena).
 const PALETTES = {
-  workers_hours: ['#edf5f5', '#d7e8ea', '#b8d3d8', '#92b8c0', '#6798a2', '#3f717b', '#21454d'],
-  wages:         ['#eef3ef', '#d8e5df', '#b4cdbf', '#88ad9c', '#628b7b', '#3e685f', '#20443f'],
-  child_forced:  ['#f8efed', '#e8c7bd', '#d99a86', '#c56b52', '#a44c3c', '#733025', '#3e1712'],
-  default:       ['#eef5f5', '#d7e5e6', '#b8ced2', '#8fadb5', '#668991', '#42636b', '#263f46'],
+  dril:   ['#C3D0E3', '#A0B4D1', '#7E98BD', '#5C7EA9', '#3C6491', '#2C4A6E', '#1B2F47'],
+  patina: ['#B9D4BD', '#93BB9E', '#6CA384', '#478A6D', '#286F58', '#115444', '#063A30'],
+  oxido:  ['#EBC9C0', '#E0A79B', '#D38476', '#C26155', '#A7423D', '#812C2B', '#571D1E'],
+  arena:  ['#D3C5A9', '#BAA98D', '#9F8E75', '#847560', '#6A5C4B'],
 };
+PALETTES.default = PALETTES.dril;
+
+// Categories that are not magnitudes. Neither belongs to any ramp.
+//   NO_DATA graphite grey: >= 14.4 dE76 from every class of every family and
+//           1.64:1 against the linen canvas. The old '#DCE8E9' sat 1.4 dE76
+//           from class 2 of the teal ramp and 1.03:1 from the canvas, so a
+//           country with no data was indistinguishable both from a real class
+//           and from the sea around it.
+//   ZERO    unprinted paper for an exact zero: 24.9 dE76 from NO_DATA and
+//           >= 19.2 dE76 from the lightest class of any family.
+const NO_DATA = '#B0B3B4';
+const ZERO    = '#F8F8F4';
+
+// Two inks for the flow layer. 31.1 dE76 apart under protanopia over the linen
+// canvas, 14.8 at worst over the darkest class of arena (they blend multiply).
 const TRADE_COLORS = {
-  imports: '#72B9C7',
-  exports: '#D49B8D',
+  imports: '#2C4A6E',
+  exports: '#A7423D',
 };
+
+// workers / hours_total / fp_hours_total used to carry a ramp of their own that
+// sat 0.4-6.9 dE76 from the generic one class by class -- four of the seven
+// pairs below the dE 5 threshold: two palettes no eye could tell apart. They
+// now share 'dril' with the rest of the quantities.
 function paletteFor(ind) {
-  if (!ind) return PALETTES.default;
-  if (ind.warn) return PALETTES.child_forced;
-  if (ind.id === 'monthly_wage' || ind.id === 'va_per_worker') return PALETTES.wages;
-  if (ind.id === 'workers' || ind.id === 'hours_total' || ind.id === 'fp_hours_total') return PALETTES.workers_hours;
-  return PALETTES.default;
+  if (!ind) return PALETTES.dril;
+  if (ind.source === 'bilateral_trade') return PALETTES.arena;
+  if (ind.warn) return PALETTES.oxido;
+  if (ind.id === 'monthly_wage' || ind.id === 'va_per_worker') return PALETTES.patina;
+  return PALETTES.dril;
+}
+
+function strictlyIncreasing(arr) {
+  for (let i = 1; i < arr.length; i++) if (!(arr[i] > arr[i - 1])) return false;
+  return true;
+}
+
+// The class ladder the map paints AND the legend prints, built once so the two
+// cannot disagree.
+//
+// Exact zeros come out of the ramp before anything else: a zero is a category,
+// not a magnitude, and a mass of them destroys the quantiles. Measured on this
+// dataset, pct_extreme_poverty only ever takes the values 0 and 100; with the
+// zeros inside the domain the six quantile breaks all landed on 0 and d3
+// painted all 182 countries in the darkest class -- a whole world at the
+// maximum while 180 of them were at zero. One single tone on the map.
+function buildClasses(values, palette) {
+  const positive = values.filter(v => v !== 0);
+  const base = positive.length ? positive : values;
+  const uniq = Array.from(new Set(base)).sort(d3.ascending);
+  const n = palette.length;
+  const extent = d3.extent(base);
+
+  if (uniq.length <= 1) {
+    return { kind: 'single', breaks: [], colors: [palette[n - 1]], values: uniq, extent };
+  }
+  if (uniq.length < n) {
+    // Fewer observed values than classes: one cell per value, spread over the
+    // whole ramp. A quantile scale here invents breaks that do not exist.
+    const colors = uniq.map((_, k) => palette[Math.round(k * (n - 1) / (uniq.length - 1))]);
+    return { kind: 'values', breaks: [], colors, values: uniq, extent };
+  }
+  if (base.length >= n * 3) {
+    const breaks = d3.scaleQuantile().domain(base).range(palette).quantiles();
+    if (strictlyIncreasing(breaks)) {
+      return { kind: 'quantile', breaks, colors: palette.slice(), values: null, extent };
+    }
+    // Ties collapsed the breaks: reclassify over the distinct values.
+    const b2 = d3.scaleQuantile().domain(uniq).range(palette).quantiles();
+    if (strictlyIncreasing(b2)) {
+      return { kind: 'quantile', breaks: b2, colors: palette.slice(), values: null, extent };
+    }
+  }
+  const [lo, hi] = extent;
+  const breaks = d3.range(1, n).map(i => lo + (hi - lo) * i / n);
+  return { kind: 'equal', breaks, colors: palette.slice(), values: null, extent };
+}
+
+function makeScale(classes) {
+  const fn = (v) => {
+    if (v === 0) return ZERO;
+    if (classes.kind === 'single') return classes.colors[0];
+    if (classes.kind === 'values') {
+      const i = Math.min(d3.bisectLeft(classes.values, v), classes.colors.length - 1);
+      return classes.colors[Math.max(0, i)];
+    }
+    return classes.colors[d3.bisectRight(classes.breaks, v)];
+  };
+  fn.classes = classes;
+  return fn;
 }
 
 function scaleFor(values, palette) {
-  const ext = d3.extent(values);
-  if (ext[0] === ext[1]) {
-    const delta = Math.abs(ext[0] || 1) * 0.02 || 1;
-    return d3.scaleQuantize().domain([ext[0] - delta, ext[1] + delta]).range(palette);
-  }
-  if (values.length >= palette.length * 3) {
-    return d3.scaleQuantile().domain(values).range(palette);
-  }
-  return d3.scaleQuantize().domain(ext).range(palette);
+  return makeScale(buildClasses(values, palette));
+}
+
+// Fill helper that also counts the units that fell outside the ramp, so the
+// legend prints the "sin dato" and "0" keys only when they are on screen.
+function makeTally() {
+  return { zero: 0, nodata: 0 };
+}
+function fillOf(v, scale, tally) {
+  if (v == null || !isFinite(v)) { if (tally) tally.nodata++; return NO_DATA; }
+  const c = scale(v);
+  if (tally && c === ZERO) tally.zero++;
+  return c;
 }
 
 let _svg, _g, _projection, _path, _topo, _countries;
@@ -64,6 +167,18 @@ function formatVal(v) {
   if (Math.abs(v) >= 1e3) return (v / 1e3).toFixed(1) + ' k';
   if (Number.isInteger(v)) return v.toString();
   return v.toFixed(2);
+}
+
+// formatVal() is right for a tooltip and wrong for a class break: it rounds
+// anything under 0.005 to "0.00", so the seven breaks of h_per_functional_unit
+// all printed "0.00" and six of the seven cells carried the title
+// "0.00 - 0.00 t/h" over a map that really does paint seven different classes.
+// Ticks keep two significant figures below 1; everything else is unchanged.
+function formatTick(v) {
+  if (v == null || !isFinite(v)) return '—';
+  const a = Math.abs(v);
+  if (a > 0 && a < 1) return Number(v.toPrecision(2)).toString();
+  return formatVal(v);
 }
 
 function getISO3(feature) {
@@ -313,15 +428,15 @@ async function paintFootprintsIndicator(metric, token) {
   const year = State.get('currentYear');
   const palette = paletteFor(metric);
   const scale = scaleFor(values, palette);
+  const tally = makeTally();
   _g.selectAll('path.country-path').style('display', null);
   _g.selectAll('path.country-path').style('fill', d => {
     const key = featureDataKey(d);
-    if (!key) return '#DCE8E9';
-    const v = valueFor(data, key, metric, year);
-    return (v == null || !isFinite(v)) ? '#DCE8E9' : scale(v);
+    if (!key) { tally.nodata++; return NO_DATA; }
+    return fillOf(valueFor(data, key, metric, year), scale, tally);
   });
   paintSelection();
-  paintLegend(values, palette, metric, scale, null);
+  paintLegend(values, palette, metric, scale, null, tally);
   return true;
 }
 
@@ -383,7 +498,7 @@ async function paint() {
   if (!values.length) {
     clearRegionLayer();
     _g.selectAll('path.country-path').style('display', null);
-    _g.selectAll('path.country-path').style('fill', '#DCE8E9');
+    _g.selectAll('path.country-path').style('fill', NO_DATA);
     d3.select('#map-legend').html('');
     return;
   }
@@ -395,16 +510,16 @@ async function paint() {
   }
 
   clearRegionLayer();
+  const tally = makeTally();
   _g.selectAll('path.country-path').style('display', null);
   _g.selectAll('path.country-path').style('fill', d => {
     const key = featureDataKey(d);
-    if (!key) return '#DCE8E9';
-    const v = valueFor(data, key, metric, year);
-    return (v == null || !isFinite(v)) ? '#DCE8E9' : scale(v);
+    if (!key) { tally.nodata++; return NO_DATA; }
+    return fillOf(valueFor(data, key, metric, year), scale, tally);
   });
 
   paintSelection();
-  paintLegend(values, palette, metric, scale, category);
+  paintLegend(values, palette, metric, scale, category, tally);
 }
 
 function clearRegionLayer() {
@@ -443,6 +558,7 @@ function buildRegionFeatures(data, metric, year) {
 }
 
 function paintRegionMap(data, metric, year, values, palette, scale, category) {
+  const tally = makeTally();
   _g.selectAll('path.country-path').style('display', 'none');
   clearRegionLayer();
 
@@ -457,10 +573,7 @@ function paintRegionMap(data, metric, year, values, palette, scale, category) {
     .enter().append('path')
       .attr('class', 'region-path')
       .attr('d', _path)
-      .style('fill', d => {
-        const v = d.properties.value;
-        return (v == null || !isFinite(v)) ? '#DCE8E9' : scale(v);
-      })
+      .style('fill', d => fillOf(d.properties.value, scale, tally))
       .on('mouseenter', (event, d) => { if (!isCoarsePointer()) showRegionTooltip(event, d, metric); })
       .on('mousemove', (event) => { if (!isCoarsePointer()) moveTooltip(event); })
       .on('mouseleave', () => { if (!isCoarsePointer()) hideTooltip(); })
@@ -494,7 +607,7 @@ function paintRegionMap(data, metric, year, values, palette, scale, category) {
     .attr('fill', 'none');
 
   paintSelection();
-  paintLegend(values, palette, metric, scale, category);
+  paintLegend(values, palette, metric, scale, category, tally);
 }
 
 function paintSelection() {
@@ -554,20 +667,101 @@ export function refreshCanvasCaption() {
   paintCanvasCaption(metric, State.get('cropCategoryFilter'));
 }
 
-function paintLegend(values, palette, metric, scale, category) {
+// Ticks live in a grid of one column per class, so a label can never land on
+// top of its neighbour: the upper bound of class i is right-aligned in column
+// i+1, which is exactly the joint it belongs to. Only every other joint is
+// printed (six numbers do not fit in 220 px), and never the joints next to the
+// ends: a label right-aligned in column 2 butts straight into the minimum,
+// which is left-aligned in column 1 and wider than its own column
+// ("265.6 k 260.23 M" read as one number). Printing columns 3 and 5 leaves a
+// whole cell of air on both sides. The exact range of every class stays in the
+// cell tooltip.
+function legendTicks(classes) {
+  const n = classes.colors.length;
+  if (classes.kind === 'single' || classes.kind === 'values') {
+    return (classes.values || []).map((v, i) => ({
+      col: i + 1, place: 'mid', text: formatTick(v),
+    }));
+  }
+  const [lo, hi] = classes.extent;
+  const ticks = [{ col: 1, place: 'start', text: formatTick(lo) }];
+  classes.breaks.forEach((b, i) => {
+    if ((i + 1) % 2 === 1 && (i + 1) >= 3 && (i + 1) <= n - 2) {
+      ticks.push({ col: i + 1, place: 'end', text: formatTick(b) });
+    }
+  });
+  ticks.push({ col: n, place: 'end', text: formatTick(hi) });
+  return ticks;
+}
+
+function legendTicksHtml(classes) {
+  const n = classes.colors.length;
+  const cells = legendTicks(classes).map(t =>
+    `<span class="map-legend-tick ${t.place}" style="grid-column:${t.col};">${t.text}</span>`
+  ).join('');
+  return `<div class="map-legend-ticks" style="grid-template-columns:repeat(${n}, 1fr);">${cells}</div>`;
+}
+
+function legendCellTitle(classes, i, unit) {
+  const u = unit ? ' ' + unit : '';
+  if (classes.kind === 'single' || classes.kind === 'values') {
+    return `${formatTick((classes.values || [])[i])}${u}`;
+  }
+  const lo = i === 0 ? classes.extent[0] : classes.breaks[i - 1];
+  const hi = i === classes.colors.length - 1 ? classes.extent[1] : classes.breaks[i];
+  return `${formatTick(lo)} – ${formatTick(hi)}${u}`;
+}
+
+function legendMethodNote(classes, metric, lang) {
+  const n = classes.colors.length;
+  const [from, to] = metricYearRange(metric) || [];
+  const span = (from && to && from !== to) ? ` ${from}\u2013${to}` : (from ? ` ${from}` : '');
+  if (classes.kind === 'single' || classes.kind === 'values') {
+    return lang === 'en'
+      ? `${n} observed value${n === 1 ? '' : 's'}${span}`
+      : `${n} valor${n === 1 ? '' : 'es'} observado${n === 1 ? '' : 's'}${span}`;
+  }
+  if (classes.kind === 'equal') {
+    return lang === 'en' ? `${n} equal intervals${span}` : `${n} tramos iguales${span}`;
+  }
+  return lang === 'en'
+    ? `${n} classes of equal count${span}`
+    : `${n} clases de igual n\u00famero de casos${span}`;
+}
+
+// The legend used to draw seven cells and label only the two ends: it promised
+// steps and printed a range, so the reader could not tell where one class ended
+// and the next began, nor that the breaks are septiles and not equal intervals.
+// It now prints the very ladder the map paints (`scale.classes`): the break
+// values at the cell joints, the classification method in words, the full range
+// of every class in the cell title, and a key for the two categories that are
+// not magnitudes -- shown only when they are actually on screen.
+function paintLegend(values, palette, metric, scale, category, tally) {
   paintCanvasCaption(metric, category);
   const box = d3.select('#map-legend');
   if (!box.node()) return;
-  const ext = d3.extent(values);
   const lang = State.get('language');
-  const stops = palette.map(c => `<span class="map-legend-cell" style="background:${c};"></span>`).join('');
+  const classes = scale && scale.classes
+    ? scale.classes
+    : buildClasses(values, palette);
+  const unit = metric && metric.unit ? metric.unit : '';
+  const stops = classes.colors.map((c, i) =>
+    `<span class="map-legend-cell" style="background:${c};" title="${escapeHtml(legendCellTitle(classes, i, unit))}"></span>`
+  ).join('');
+  const keys = [];
+  if (tally && tally.zero) {
+    keys.push(`<span class="map-legend-key"><i style="background:${ZERO};"></i>${lang === 'en' ? 'exactly 0' : 'cero exacto'}</span>`);
+  }
+  if (!tally || tally.nodata) {
+    keys.push(`<span class="map-legend-key"><i style="background:${NO_DATA};"></i>${lang === 'en' ? 'no data' : 'sin dato'}</span>`);
+  }
   box.html(`
     <div class="map-legend-title">${metric.labelText} <span style="opacity:0.62">(${metric.unit})</span></div>
     ${category ? `<div class="map-legend-filter">${escapeHtml(formatCategoryLabel(category, lang))}</div>` : ''}
     <div class="map-legend-bar">${stops}</div>
-    <div class="map-legend-labels">
-      <span>${formatVal(ext[0])}</span><span>${formatVal(ext[1])}</span>
-    </div>
+    ${legendTicksHtml(classes)}
+    <div class="map-legend-note">${escapeHtml(legendMethodNote(classes, metric, lang))}</div>
+    ${keys.length ? `<div class="map-legend-keys">${keys.join('')}</div>` : ''}
   `);
 }
 
@@ -782,12 +976,19 @@ async function paintTradeMap(metric) {
   const values = Object.values(countries)
     .map(country => tradeCountryValue(country, flow, product))
     .filter(v => v > 0 && isFinite(v));
-  const palette = PALETTES.default;
+  const palette = PALETTES.arena;   // neutral earth: the arcs are the message here
   const scale = values.length ? scaleFor(values, palette) : null;
+  // A country absent from the bilateral index has NO DATA; a country that is in
+  // the index and moved nothing has an exact ZERO. Painting both alike said
+  // "we do not know" of a country we know traded nothing.
+  const baseTally = makeTally();
   _g.selectAll('path.country-path').style('fill', d => {
     const iso = getISO3(d);
-    const v = iso ? tradeCountryValue(countries[iso], flow, product) : 0;
-    return scale && v > 0 ? scale(v) : '#DCE8E9';
+    if (!iso || !countries[iso]) { baseTally.nodata++; return NO_DATA; }
+    const v = tradeCountryValue(countries[iso], flow, product);
+    if (!isFinite(v)) { baseTally.nodata++; return NO_DATA; }
+    if (!scale || v <= 0) { baseTally.zero++; return ZERO; }
+    return scale(v);
   });
 
   const selected = (State.get('selectedCountries') || [])[0] || State.get('focusedCountry');
@@ -911,9 +1112,22 @@ async function paintTradeMap(metric) {
       : `${escapeHtml(source)} &rarr; ${escapeHtml(target)}`;
     return `<div class="map-flow-row"><span>${label}</span><strong>${formatVal(d.tonnes)} t</strong></div>`;
   }).join('');
+  const baseClasses = scale && scale.classes ? scale.classes : null;
+  const baseStrip = baseClasses ? `
+    <div class="map-legend-bar">${baseClasses.colors.map((c, i) =>
+      `<span class="map-legend-cell" style="background:${c};" title="${escapeHtml(legendCellTitle(baseClasses, i, tradeUnit()))}"></span>`).join('')}</div>
+    ${legendTicksHtml(baseClasses)}
+    <div class="map-legend-note">${lang === 'en'
+      ? `country total, ${baseClasses.colors.length} classes of equal count`
+      : `total del pa\u00eds, ${baseClasses.colors.length} clases de igual n\u00famero de casos`}</div>
+    <div class="map-legend-keys">
+      ${baseTally.zero ? `<span class="map-legend-key"><i style="background:${ZERO};"></i>${lang === 'en' ? 'no flow' : 'sin flujo'}</span>` : ''}
+      ${baseTally.nodata ? `<span class="map-legend-key"><i style="background:${NO_DATA};"></i>${lang === 'en' ? 'no data' : 'sin dato'}</span>` : ''}
+    </div>` : '';
   d3.select('#map-legend').html(`
     <div class="map-legend-title">${hasSelection ? escapeHtml(index.countries?.[selected] || selected) : (lang === 'en' ? 'Main world flows' : 'Principales flujos mundiales')}</div>
     <div class="map-legend-filter">${escapeHtml(productTitle)} &middot; ${escapeHtml(flowTitle)} &middot; ${escapeHtml(`Top ${topN}`)}</div>
+    ${baseStrip}
     <div class="map-flow-keys"><span class="flow-key imports"></span>${lang === 'en' ? 'Imports' : 'Importaciones'} <span class="flow-key exports"></span>${lang === 'en' ? 'Exports' : 'Exportaciones'}</div>
     <div class="map-flow-list">${list}</div>
     ${hasSelection ? '' : `<div class="map-legend-note">${lang === 'en' ? 'Select a country to focus its partner flows.' : 'Selecciona un país para enfocar sus socios.'}</div>`}

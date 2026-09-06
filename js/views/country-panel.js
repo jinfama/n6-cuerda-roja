@@ -328,8 +328,8 @@ function renderCountryCharts(ctx) {
   renderLineChart('country-footprint-chart', [
     { field: 'footprint', label: isEn ? 'Footprint' : 'Huella', color: '#214B52' },
     { field: 'production', label: isEn ? 'Production' : 'Producción', color: '#62735A' },
-    { field: 'imports', label: isEn ? 'Imports' : 'Import.', color: '#72B9C7' },
-    { field: 'exports', label: isEn ? 'Exports' : 'Export.', color: '#D49B8D' },
+    { field: 'imports', label: isEn ? 'Imports' : 'Import.', color: '#2C4A6E' },
+    { field: 'exports', label: isEn ? 'Exports' : 'Export.', color: '#A7423D' },
   ].map(d => ({
     label: d.label,
     unit: 'h/año',
@@ -343,8 +343,8 @@ function renderFootprintLegend(lang) {
   const rows = [
     ['#214B52', isEn ? 'Footprint' : 'Huella'],
     ['#62735A', isEn ? 'Production' : 'Producción'],
-    ['#72B9C7', isEn ? 'Imports' : 'Importaciones'],
-    ['#D49B8D', isEn ? 'Exports' : 'Exportaciones'],
+    ['#2C4A6E', isEn ? 'Imports' : 'Importaciones'],
+    ['#A7423D', isEn ? 'Exports' : 'Exportaciones'],
   ];
   return `
     <div class="country-chart-legend">

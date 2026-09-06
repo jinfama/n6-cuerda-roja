@@ -662,7 +662,8 @@ a { color: inherit; text-decoration: none; }
   gap: 2px;
   pointer-events: none;
   border-left: 3px solid var(--c-hot);
-  padding-left: 9px;
+  padding: 6px 10px 6px 9px;
+  background: rgba(235, 226, 207, 0.93);
   z-index: 3;
 }
 .map-caption strong {
@@ -720,6 +721,7 @@ a { color: inherit; text-decoration: none; }
 .map-legend-bar {
   display: flex;
   height: 14px;
+  pointer-events: auto;   /* every cell carries its exact range as a title */
 }
 .map-legend-cell {
   flex: 1;
@@ -731,6 +733,42 @@ a { color: inherit; text-decoration: none; }
   justify-content: space-between;
   font-size: 12px;
   margin-top: 4px;
+}
+/* class breaks sit exactly over the joint they belong to */
+.map-legend-ticks {
+  display: grid;
+  margin-top: 3px;
+  align-items: start;
+}
+.map-legend-tick {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--c-text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  min-width: 0;
+}
+.map-legend-tick.start { text-align: left; padding-right: 5px; }
+.map-legend-tick.mid   { text-align: center; }
+.map-legend-tick.end   { text-align: right; }
+.map-legend-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--c-text-2);
+}
+.map-legend-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.map-legend-key i {
+  width: 13px;
+  height: 10px;
+  display: inline-block;
+  border: 1px solid var(--c-border);
 }
 .map-legend-note {
   margin-top: 3px;
@@ -917,13 +955,16 @@ a { color: inherit; text-decoration: none; }
 
 .country-path {
   fill: var(--c-bg-h);
-  stroke: var(--c-bg);
-  stroke-width: 0.4;
+  stroke: rgba(44, 74, 110, 0.42);
+  stroke-width: 0.5;
   cursor: pointer;
   transition: fill .42s linear, stroke .15s ease;
 }
-.country-path:hover { stroke: var(--c-text); stroke-width: 1; }
-.country-path.selected { stroke: var(--c-hot); stroke-width: 1.7; }
+/* ocre is what the cover uses to mark the point being read; here hover and
+   selection share it and differ in weight. Ink hover measured 1.19:1 over the
+   darkest class; ocre measures 3.42:1 there and 2.56:1 over the lightest. */
+.country-path:hover { stroke: var(--c-hot); stroke-width: 1.1; }
+.country-path.selected { stroke: var(--c-hot); stroke-width: 2.2; }
 .region-path {
   fill: var(--c-bg-h);
   stroke: rgba(32,33,30,0.34);
@@ -962,15 +1003,15 @@ a { color: inherit; text-decoration: none; }
   pointer-events: stroke;
   filter: drop-shadow(0 1px 2px rgba(32,33,30,0.20));
 }
-.trade-arc-imports { stroke: #72B9C7; }
-.trade-arc-exports { stroke: #D49B8D; }
+.trade-arc-imports { stroke: #2C4A6E; }
+.trade-arc-exports { stroke: #A7423D; }
 .trade-node {
   stroke: var(--c-bg);
   stroke-width: 1.2;
   pointer-events: none;
 }
-.trade-node-imports { fill: #72B9C7; }
-.trade-node-exports { fill: #D49B8D; }
+.trade-node-imports { fill: #2C4A6E; }
+.trade-node-exports { fill: #A7423D; }
 .trade-focus-ring {
   stroke: var(--c-text);
   stroke-width: 2;
@@ -991,8 +1032,8 @@ a { color: inherit; text-decoration: none; }
   display: inline-block;
   border-radius: 0;
 }
-.flow-key.imports { background: #72B9C7; }
-.flow-key.exports { background: #D49B8D; margin-left: 8px; }
+.flow-key.imports { background: #2C4A6E; }
+.flow-key.exports { background: #A7423D; margin-left: 8px; }
 .map-flow-list {
   display: grid;
   gap: 4px;
@@ -3188,6 +3229,16 @@ a { color: inherit; text-decoration: none; }
     font-size: 9px;
     margin-top: 2px;
   }
+  .map-legend-ticks {
+    margin-top: 2px;
+  }
+  .map-legend-tick { font-size: 9px; }
+  .map-legend-keys {
+    font-size: 9px;
+    gap: 3px 9px;
+    margin-top: 3px;
+  }
+  .map-legend-key i { width: 11px; height: 8px; }
   .map-tooltip {
     max-width: calc(100vw - 20px);
     white-space: normal;
@@ -3610,6 +3661,8 @@ a { color: inherit; text-decoration: none; }
 .rp-territory-note,
 .map-legend-title,
 .map-legend-labels,
+.map-legend-tick,
+.map-legend-keys,
 .map-legend-note,
 .map-legend-filter,
 .footer,
