@@ -7,80 +7,142 @@
 <meta name="color-scheme" content="light">
 <meta name="theme-color" content="#EBE2CF">
 <title>Agricultores del Mundo</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%231B2F47'/%3E%3Cpath d='M12 4v15M7.2 9.2 12 6.8l4.8 2.4M8 13.1l4-2 4 2M8.8 17l3.2-1.6 3.2 1.6' stroke='%23DE9E2C' stroke-width='1.7' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,400..800&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,300..600&display=swap">
 <style>
 :root{
-  /* Mono de trabajo y ocre sobre lino crudo: el cartel a dos tintas de una
-     cooperativa agraria. Azul de dril para el trabajo, ocre para la mies. */
-  --lino:#EBE2CF; --lino-2:#E1D6BE; --lino-3:#D6C9AC;
-  --ink:#20211E; --ink-2:#4C4C44; --ink-3:#7B7869;
+  /* Portada V6 · Agricultores del Mundo. Misma paleta que css/styles.css:
+     lino (papel tostado) + dril (azul de trabajo) + ocre (latón). */
+  --lino:#EBE2CF; --lino-2:#E1D6BE; --lino-3:#D6C9AC; --paper:#F4EDE0;
+  --ink:#20211E; --ink-2:#4C4C44; --ink-3:#5C5749;
   --dril:#2C4A6E; --dril-2:#3E6A99; --dril-d:#1B2F47;
-  --ocre:#BE7A14; --ocre-d:#8E5A0B; --ocre-hi:#DE9E2C;
+  --ocre:#BE7A14; --ocre-d:#85520A; --ocre-hi:#DE9E2C;
   --hair:rgba(32,33,30,.20); --hair-2:rgba(32,33,30,.34);
   --display:Archivo,"Helvetica Neue",Helvetica,Arial,sans-serif;
   --text:"Source Serif 4",Georgia,"Times New Roman",serif;
   --mono:"IBM Plex Mono",ui-monospace,Consolas,"DejaVu Sans Mono",monospace;
-  --pad:clamp(17px,2.9vw,44px);
+  --pad:clamp(17px,2.6vw,40px);
 }
 *{box-sizing:border-box}
 html,body{height:100%}
 body{margin:0;background:var(--lino);color:var(--ink);font-family:var(--text);font-size:15px;line-height:1.45;
      -webkit-font-smoothing:antialiased;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
+#grain{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.28}
 
-/* paper grain: one static filter pass, no cost per frame */
-#grain{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.30}
+/* ---------- idioma: cada texto lleva su par en data-en ---------- */
+.lang{position:absolute;top:clamp(12px,2vh,20px);right:var(--pad);z-index:5;display:flex;border:1px solid var(--hair-2);
+      font-family:var(--mono);font-size:12px;letter-spacing:.08em;background:rgba(244,237,224,.7)}
+.lang button{appearance:none;border:0;background:transparent;color:var(--ink-3);font:inherit;padding:0 14px;min-height:44px;min-width:46px;
+             cursor:pointer;letter-spacing:inherit}
+.lang button[aria-pressed="true"]{background:var(--dril);color:var(--lino)}
+.lang button:focus-visible{outline:2px solid var(--ocre);outline-offset:-2px}
 
+/* ---------- rejilla ---------- */
 .page{position:relative;z-index:1;min-height:100vh;min-height:100dvh;display:grid;
-      grid-template-columns:minmax(310px,31vw) 1fr;grid-template-rows:auto 1fr;
-      grid-template-areas:"head stage" "nav stage"}
+      grid-template-columns:minmax(320px,30vw) 1fr;grid-template-rows:1fr auto auto;
+      grid-template-areas:"side stage" "side time" "side chips"}
+.side{grid-area:side;display:flex;flex-direction:column;min-height:0}
 .head,.nav{padding-left:var(--pad);padding-right:var(--pad);position:relative;z-index:2}
-.head{grid-area:head;padding-top:clamp(16px,3vh,32px)}
-.nav{grid-area:nav;display:flex;flex-direction:column;min-height:0;padding-top:clamp(14px,2.4vh,26px);
+.head{padding-top:clamp(16px,3vh,32px)}
+.nav{margin-top:auto;display:flex;flex-direction:column;min-height:0;padding-top:clamp(10px,2vh,22px);
      padding-bottom:max(clamp(14px,2.4vh,26px),env(safe-area-inset-bottom))}
-.stage{grid-area:stage;position:relative;border-left:1px solid var(--hair);min-height:0;overflow:hidden;
-       touch-action:manipulation}
-.stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.stage{grid-area:stage;position:relative;border-left:1px solid var(--hair);min-height:0;display:flex;flex-direction:column;
+       touch-action:pan-y;user-select:none;-webkit-user-select:none;cursor:crosshair;overflow:hidden}
+.pane{position:relative;min-height:0}
+.pane.map{flex:55 0 0}
+.pane.chart{flex:45 0 0;border-top:1px solid var(--hair)}
+.pane canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.lab{position:absolute;z-index:2;pointer-events:none;font-family:var(--mono);font-size:12px;line-height:1.35;letter-spacing:.04em;
+     color:var(--ink-2);max-width:min(72%,560px)}
+.lab b{font-weight:500;color:var(--ink);text-transform:uppercase;letter-spacing:.08em}
+.lab .yr{color:var(--ocre-d);font-weight:500}
+.lab.map{top:9px;left:14px}
+.lab.chart{top:8px;left:14px}
+.legend{position:absolute;z-index:2;left:14px;bottom:8px;pointer-events:none;display:flex;align-items:flex-end;gap:10px;
+        font-family:var(--mono);font-size:12px;color:var(--ink-2);line-height:1.3;
+        background:rgba(235,226,207,.82);padding:5px 8px 5px 6px;border:1px solid var(--hair)}
+.legend svg{display:block;flex:0 0 auto}
+.legend .t{max-width:190px}
+.legend .t i{font-style:normal;color:var(--ink-3);display:block}
 
-.kicker{margin:0 0 10px;display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:10.5px;
-        letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3)}
+/* ---------- barra de tiempo ---------- */
+.time{grid-area:time;position:relative;z-index:2;border-left:1px solid var(--hair);border-top:1px solid var(--hair);
+      display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;padding:8px 16px 8px 14px;min-height:64px}
+.play{appearance:none;width:46px;height:46px;border:1.5px solid var(--dril);background:var(--paper);color:var(--dril);
+      border-radius:50%;cursor:pointer;display:grid;place-items:center;padding:0;transition:background .15s,color .15s}
+.play:hover,.play:focus-visible{background:var(--dril);color:var(--lino);outline:none}
+.play:focus-visible{box-shadow:0 0 0 3px var(--ocre-hi)}
+.play svg{width:20px;height:20px;fill:currentColor}
+.play .ic-pause{display:none}
+body.playing .play .ic-play{display:none}
+body.playing .play .ic-pause{display:block}
+.track{display:flex;flex-direction:column;gap:3px;min-width:0}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:44px;margin:0;background:transparent;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:3px;background:linear-gradient(90deg,var(--dril) var(--fill,0%),var(--lino-3) var(--fill,0%))}
+input[type=range]::-moz-range-track{height:3px;background:var(--lino-3)}
+input[type=range]::-moz-range-progress{height:3px;background:var(--dril)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--ocre);
+      border:2px solid var(--paper);box-shadow:0 0 0 1px var(--ocre-d);margin-top:-7.5px}
+input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--ocre);border:2px solid var(--paper);
+      box-shadow:0 0 0 1px var(--ocre-d)}
+input[type=range]:focus-visible{outline:none}
+input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 3px var(--ocre-hi)}
+.ticks{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;color:var(--ink-3);padding:0 2px;line-height:1}
+.bigyr{font-family:var(--display);font-weight:760;font-variation-settings:"wdth" 96;font-size:clamp(30px,2.6vw,40px);line-height:1;
+       letter-spacing:-.02em;color:var(--ink);font-variant-numeric:tabular-nums;min-width:4.2ch;text-align:right}
+.bigyr small{display:block;font-family:var(--mono);font-weight:400;font-size:12px;letter-spacing:.1em;text-transform:uppercase;
+             color:var(--ink-3);margin-top:3px;text-align:right}
+
+/* ---------- sugerencias de clic ---------- */
+.chips{grid-area:chips;position:relative;z-index:2;border-left:1px solid var(--hair);border-top:1px solid var(--hair);
+       display:flex;align-items:center;gap:8px;padding:8px 16px 10px 14px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chips .l{flex:0 0 auto;font-family:var(--mono);font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);margin-right:4px}
+.chip{flex:0 0 auto;appearance:none;border:1px solid var(--hair-2);background:transparent;color:var(--ink);cursor:pointer;
+      min-height:44px;padding:4px 12px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:1px;
+      font-family:var(--display);font-weight:560;font-size:13px;line-height:1.15;transition:border-color .15s,background .15s}
+.chip small{font-family:var(--mono);font-weight:400;font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.chip:hover,.chip:focus-visible{border-color:var(--ocre);outline:none}
+.chip[aria-pressed="true"]{background:var(--ocre);border-color:var(--ocre);color:#fff}
+.chip[aria-pressed="true"] small{color:rgba(255,255,255,.88)}
+
+/* ---------- columna de texto ---------- */
+.kicker{margin:0 0 10px;display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:12px;
+        letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);padding-right:96px}
 .kicker i{display:block;width:20px;height:2px;background:var(--ocre);flex:0 0 auto}
 h1{margin:0;font-family:var(--display);font-weight:760;font-variation-settings:"wdth" 108;
-   font-size:clamp(31px,3.3vw,49px);line-height:.96;letter-spacing:-.021em;color:var(--ink);text-wrap:balance}
+   font-size:clamp(30px,3.1vw,46px);line-height:.96;letter-spacing:-.021em;color:var(--ink);text-wrap:balance}
 h1 small{display:block;margin-top:.42em;font-weight:400;font-variation-settings:"wdth" 100;
-         font-size:.40em;letter-spacing:.015em;color:var(--dril)}
-.desc{margin:.9em 0 0;color:var(--ink-2);font-size:clamp(13.5px,1.02vw,15.5px);line-height:1.5;text-wrap:pretty}
-
-.count{margin-top:clamp(12px,2.2vh,24px);display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap}
+         font-size:max(12px,.40em);letter-spacing:.015em;color:var(--dril)}
+.desc{margin:.85em 0 0;color:var(--ink-2);font-size:clamp(13.5px,1vw,15px);line-height:1.5;text-wrap:pretty}
+.cta{margin-top:clamp(14px,2.2vh,22px);display:inline-flex;align-items:center;justify-content:center;gap:12px;min-height:54px;
+     padding:0 22px 0 24px;background:var(--dril);color:var(--lino);text-decoration:none;font-family:var(--display);font-weight:700;
+     font-variation-settings:"wdth" 104;font-size:17px;letter-spacing:.01em;border:1.5px solid var(--dril-d);
+     box-shadow:3px 3px 0 var(--ocre);transition:transform .12s,box-shadow .12s,background .15s}
+.cta:hover,.cta:focus-visible{background:var(--dril-d);transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ocre);outline:none}
+.cta:focus-visible{box-shadow:4px 4px 0 var(--ocre),0 0 0 3px var(--ocre-hi)}
+.cta svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.count{margin-top:clamp(14px,2.6vh,28px);display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap}
 .count .n{font-family:var(--display);font-weight:760;font-variation-settings:"wdth" 96;
-          font-size:clamp(40px,4.6vw,68px);line-height:.84;letter-spacing:-.035em;color:var(--dril);
-          font-variant-numeric:tabular-nums;transition:color .18s}
-body.probing .count .n{color:var(--ocre-d)}
-.count .u{font-family:var(--display);font-weight:700;font-size:clamp(15px,1.5vw,22px);line-height:1.5;
-          letter-spacing:.02em;color:var(--ocre-d)}
-.count .cap{flex:1 1 100%;margin:.5em 0 0;font-size:clamp(12px,.92vw,13.5px);color:var(--ink-2);line-height:1.3}
-.count .yr{font-family:var(--mono);font-size:.86em;letter-spacing:.05em;color:var(--ink);
-           border:1px solid var(--hair-2);padding:1px 5px;margin-left:5px;white-space:nowrap}
-
-.w-narrow{display:none}
-.hint{margin:clamp(8px,1.4vh,14px) 0 0;font-family:var(--mono);font-size:10px;letter-spacing:.11em;
-      text-transform:uppercase;color:var(--ink-3);opacity:0;transition:opacity .6s ease .3s;line-height:1.4}
+          font-size:clamp(40px,4.4vw,66px);line-height:.84;letter-spacing:-.035em;color:var(--dril);font-variant-numeric:tabular-nums}
+.count .u{font-family:var(--display);font-weight:700;font-size:clamp(15px,1.4vw,21px);line-height:1.5;letter-spacing:.02em;color:var(--ocre-d)}
+.count .cap{flex:1 1 100%;margin:.5em 0 0;font-size:clamp(12.5px,.92vw,13.5px);color:var(--ink-2);line-height:1.3}
+.count .yr{font-family:var(--mono);font-size:12px;letter-spacing:.05em;color:var(--ink);border:1px solid var(--hair-2);padding:1px 5px;margin-left:5px;white-space:nowrap}
+.hint{margin:clamp(8px,1.4vh,14px) 0 0;font-family:var(--mono);font-size:12px;letter-spacing:.04em;color:var(--ink-3);line-height:1.45;
+      opacity:0;transition:opacity .6s ease .3s}
 body.ready .hint{opacity:1}
-body.touched .hint{opacity:0;transition:opacity .25s ease}
+.w-narrow{display:none}
 
-.navlabel{margin:0 0 6px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
-          color:var(--ink-3)}
+.navlabel{margin:0 0 6px;font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
 .index{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
-.index li{display:flex;flex:1 1 auto;min-height:46px;max-height:74px;border-top:1px solid var(--hair-2)}
+.index li{display:flex;flex:1 1 auto;min-height:44px;max-height:64px;border-top:1px solid var(--hair-2)}
 .index li:last-child{border-bottom:1px solid var(--hair-2)}
 .index a{flex:1;display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--ink);
-         font-family:var(--display);font-weight:560;font-variation-settings:"wdth" 104;
-         font-size:14.5px;letter-spacing:-.004em;line-height:1.15;transition:color .16s}
-.index a svg{width:17px;height:17px;flex:0 0 auto;stroke:var(--dril);fill:none;stroke-width:1.6;
-             stroke-linecap:round;stroke-linejoin:round;transition:stroke .16s}
-.index a .ar{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--ink-3);
-             transition:transform .16s,color .16s}
+         font-family:var(--display);font-weight:560;font-variation-settings:"wdth" 104;font-size:14.5px;line-height:1.15;transition:color .16s}
+.index a svg{width:17px;height:17px;flex:0 0 auto;stroke:var(--dril);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.index a .ar{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--ink-3);transition:transform .16s,color .16s}
 .index a.q{font-weight:460;font-size:13.5px;color:var(--ink-2)}
 .index a.q svg{stroke:var(--ink-3)}
 .index a:hover,.index a:focus-visible{color:var(--ocre-d)}
@@ -88,20 +150,17 @@ body.touched .hint{opacity:0;transition:opacity .25s ease}
 .index a:hover .ar,.index a:focus-visible .ar{color:var(--ocre-d);transform:translateX(3px)}
 .index a:focus-visible{outline:2px solid var(--dril);outline-offset:-2px}
 
-/* la ficha que lee lo que hay bajo el cursor */
-.tip{position:fixed;z-index:6;pointer-events:none;top:0;left:0;max-width:min(258px,70vw);
-     background:rgba(243,236,222,.975);border:1px solid var(--hair-2);padding:7px 10px 8px;
+/* ---------- ficha bajo el cursor ---------- */
+.tip{position:fixed;z-index:6;pointer-events:none;top:0;left:0;max-width:min(272px,74vw);
+     background:rgba(244,237,224,.975);border:1px solid var(--hair-2);padding:7px 10px 8px;
      box-shadow:2px 2px 0 rgba(32,33,30,.10);opacity:0;transition:opacity .12s ease;will-change:transform}
 .tip.on{opacity:1}
-.tip b{display:block;font-family:var(--display);font-weight:700;font-variation-settings:"wdth" 104;
-       font-size:14px;line-height:1.15;color:var(--ink)}
-.tip s{display:block;text-decoration:none;font-family:var(--display);font-weight:760;
-       font-variation-settings:"wdth" 96;font-size:22px;line-height:1.05;margin-top:3px;
-       letter-spacing:-.02em;color:var(--dril);font-variant-numeric:tabular-nums}
-.tip s em{font-style:normal;font-family:var(--display);font-weight:700;font-size:.52em;
-          letter-spacing:.01em;color:var(--ocre-d);margin-left:.3em}
-.tip i{display:block;font-style:normal;font-family:var(--mono);font-size:10.5px;line-height:1.42;
-       color:var(--ink-2);margin-top:4px}
+.tip b{display:block;font-family:var(--display);font-weight:700;font-variation-settings:"wdth" 104;font-size:14px;line-height:1.15;color:var(--ink)}
+.tip s{display:block;text-decoration:none;font-family:var(--display);font-weight:760;font-variation-settings:"wdth" 96;font-size:22px;
+       line-height:1.05;margin-top:3px;letter-spacing:-.02em;color:var(--dril);font-variant-numeric:tabular-nums}
+.tip s em{font-style:normal;font-family:var(--display);font-weight:700;font-size:.52em;letter-spacing:.01em;color:var(--ocre-d);margin-left:.3em}
+.tip i{display:block;font-style:normal;font-family:var(--mono);font-size:12px;line-height:1.42;color:var(--ink-2);margin-top:4px}
+.tip u{display:block;text-decoration:none;font-family:var(--mono);font-size:12px;color:var(--ocre-d);margin-top:4px}
 
 .enter{opacity:0;transform:translateY(5px);transition:opacity .34s ease,transform .42s cubic-bezier(.2,.7,.2,1)}
 body.on .enter{opacity:1;transform:none}
@@ -109,43 +168,65 @@ body.on .enter.d1{transition-delay:.05s}
 body.on .enter.d2{transition-delay:.10s}
 body.on .enter.d3{transition-delay:.15s}
 
+/* ---------- móvil: título → escenario → tiempo → CTA fijo → índice ---------- */
 @media (max-width:919px) and (orientation:portrait){
-  .page{grid-template-columns:1fr;grid-template-rows:auto minmax(264px,1fr) auto;
-        grid-template-areas:"head" "stage" "nav"}
-  .stage{border-left:0;border-top:1px solid var(--hair);border-bottom:1px solid var(--hair)}
+  .page{grid-template-columns:1fr;grid-template-rows:auto auto auto auto auto;
+        grid-template-areas:"head" "stage" "time" "chips" "nav";padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+  .side{display:contents}
+  .head{grid-area:head}
+  .nav{grid-area:nav;margin-top:0}
+  .lang{top:10px}
+  .kicker{display:none}
+  .head{padding-top:14px}
+  .stage{border-left:0;border-top:1px solid var(--hair);height:52vh;height:52dvh;min-height:52vh;cursor:default}
+  .pane.map{flex:55 0 0}
+  .pane.chart{flex:45 0 0}
+  .time,.chips{border-left:0}
+  .time{gap:10px;padding:6px 12px;min-height:60px}
+  .bigyr{font-size:28px;min-width:4ch}
+  .bigyr small{font-size:12px}
   .head{padding-bottom:12px}
-  .nav{padding-top:11px}
-  h1{font-size:clamp(27px,7.6vw,37px)}
-  .desc{font-size:12.8px;margin-top:.65em;line-height:1.42}
-  .count{margin-top:10px}
-  .count .n{font-size:clamp(34px,10.6vw,46px)}
-  .count .cap{margin-top:.35em;font-size:12px}
-  .hint{margin-top:8px;font-size:9.5px;letter-spacing:.09em}
+  h1{font-size:clamp(27px,7.6vw,37px);padding-right:100px}
+  .desc{font-size:12.5px;margin-top:.55em;line-height:1.38}
+  .cta{position:fixed;left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));z-index:8;margin:0;min-height:54px;
+       display:flex;font-size:16px;box-shadow:3px 3px 0 var(--ocre),0 -8px 24px rgba(235,226,207,.9)}
+  .count{margin-top:8px;align-items:baseline}
+  .count .n{font-size:clamp(30px,9vw,40px)}
+  .count .cap{margin-top:.25em;font-size:12px}
+  .hint{display:none}
   .w-wide{display:none}
   .w-narrow{display:inline}
+  .lab{font-size:12px;max-width:calc(100% - 16px);white-space:nowrap;letter-spacing:0}
+  .lab b{letter-spacing:.03em}
+  .lab.map{top:6px;left:10px}
+  .lab.chart{top:6px;left:10px}
+  .legend{left:50%;transform:translateX(-50%);bottom:4px;gap:8px;padding:3px 7px 3px 5px;width:max-content;max-width:calc(100% - 12px)}
+  .legend .t{max-width:300px;white-space:nowrap}
   .navlabel{display:none}
   .index{flex:0 0 auto}
   .index li{flex:0 0 auto;min-height:44px;max-height:none}
+  .nav{padding-top:10px}
 }
-@media (max-height:540px) and (orientation:landscape){
-  :root{--pad:clamp(12px,2.1vw,22px)}
+@media (max-height:560px) and (orientation:landscape){
+  :root{--pad:clamp(12px,2vw,22px)}
   .head{padding-top:10px}
-  .kicker{margin-bottom:5px;display:none}
-  h1{font-size:clamp(22px,2.6vw,32px)}
+  .kicker{display:none}
+  h1{font-size:clamp(22px,2.6vw,30px)}
+  .desc{font-size:12.5px;line-height:1.34;margin-top:.45em}
+  .cta{min-height:44px;font-size:15px;margin-top:10px}
   .count{margin-top:8px}
   .count .n{font-size:clamp(28px,3.4vw,40px)}
-  .count .cap{margin-top:.3em;font-size:11.5px}
-  .desc{font-size:11px;line-height:1.34;margin-top:.45em}
+  .count .cap{margin-top:.3em;font-size:12px}
   .hint{display:none}
+  .time{min-height:52px;padding:4px 12px}
+  .chips{display:none}
   .navlabel{display:none}
   .index li{min-height:30px;max-height:36px}
   .index a{font-size:12.5px;gap:8px}
-  .index a svg{width:14px;height:14px}
-  .nav{padding-top:6px;padding-bottom:8px}
 }
 @media (prefers-reduced-motion:reduce){
   .enter{transition:none;opacity:1;transform:none}
-  .index a,.index a .ar,.tip,.hint{transition:none}
+  .index a,.index a .ar,.tip,.hint,.cta,.chip{transition:none}
 }
 </style>
 </head>
@@ -159,668 +240,565 @@ body.on .enter.d3{transition-delay:.15s}
   <rect width="300" height="300" filter="url(#fib)"/>
 </svg>
 
-<main class="page">
-  <header class="head">
-    <p class="kicker enter"><i></i><span>Visor de datos &middot; 1962&ndash;2021 &middot; 186 pa&iacute;ses</span></p>
-    <h1 class="enter">Agricultores del Mundo<small>Workers of the World</small></h1>
-    <p class="desc enter d1">Un visor sobre quienes trabajan el campo. Cu&aacute;ntos son en cada pa&iacute;s, cu&aacute;ntas horas echan y en qu&eacute; condiciones lo hacen; tambi&eacute;n el trabajo que viaja escondido en el comercio de alimentos.</p>
-    <div class="count enter d2">
-      <span class="n" id="big">580,6</span><span class="u">millones</span>
-      <p class="cap">de personas trabajan la tierra en el mundo<span class="yr" id="year">1962</span></p>
-    </div>
-    <p class="hint" id="hint"><span class="w-wide">Pasa el cursor por el mapa, por la serie o por la columna de la derecha</span><span class="w-narrow">Toca el mapa, la serie o la columna</span></p>
-  </header>
+<div class="lang" role="group" aria-label="Idioma / Language">
+  <button type="button" data-lang="es" aria-pressed="true">ES</button>
+  <button type="button" data-lang="en" aria-pressed="false">EN</button>
+</div>
 
+<main class="page">
+  <div class="side">
+  <header class="head">
+    <p class="kicker enter"><i></i><span data-en="Data viewer &middot; 1962&ndash;2021 &middot; 186 countries">Visor de datos &middot; 1962&ndash;2021 &middot; 186 pa&iacute;ses</span></p>
+    <h1 class="enter"><span data-en="Workers of the World">Agricultores del Mundo</span><small data-en="Agricultores del Mundo">Workers of the World</small></h1>
+    <p class="desc enter d1" data-en="A viewer about the people who work the land. How many there are in each country, how many hours they put in and under what conditions; also the labour that travels hidden in the food trade.">Un visor sobre quienes trabajan el campo. Cu&aacute;ntos son en cada pa&iacute;s, cu&aacute;ntas horas echan y en qu&eacute; condiciones lo hacen; tambi&eacute;n el trabajo que viaja escondido en el comercio de alimentos.</p>
+    <a class="cta enter d1" id="cta" href="visor.html"><span data-en="Enter the viewer">Entrar al visor</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></a>
+    <div class="count enter d2">
+      <span class="n" id="big">743,4</span><span class="u" data-en="million">millones</span>
+      <p class="cap"><span data-en="people work the land worldwide in">de personas trabajan la tierra en el mundo en</span><span class="yr" id="year">2021</span></p>
+    </div>
+    <p class="hint" id="hint"><span class="w-wide" data-en="Drag across the scene to travel the years &middot; hover a country &middot; click pins it &middot; &larr; &rarr; one year, Shift ten, space plays">Arrastra sobre el escenario para recorrer los a&ntilde;os &middot; pasa el cursor por un pa&iacute;s &middot; clic lo fija &middot; &larr; &rarr; un a&ntilde;o, May&uacute;s diez, espacio reproduce</span></p>
+  </header>
   <nav class="nav" aria-label="Secciones del visor">
-    <p class="navlabel enter d2">Entrar al visor</p>
+    <p class="navlabel enter d2" data-en="Sections of the viewer">Secciones del visor</p>
     <ul class="index enter d3">
-      <li><a href="visor.html?view=map">
+      <li><a href="visor.html?view=map" data-view="map">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6.4v13.2L9 17.2l6 2.4 6-2.4V4l-6 2.4z"/><path d="M9 4v13.2M15 6.4v13.2"/></svg>
-        <span>Mapa</span><i class="ar" aria-hidden="true">&rarr;</i></a></li>
-      <li><a href="visor.html?view=trend">
+        <span data-en="Map">Mapa</span><i class="ar" aria-hidden="true">&rarr;</i></a></li>
+      <li><a href="visor.html?view=trend" data-view="trend">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 19.5h17"/><path d="M4 16l4.5-5.2 3.4 2.6L19.5 6"/><path d="M15.6 6h3.9v3.9"/></svg>
-        <span>Evoluci&oacute;n</span><i class="ar" aria-hidden="true">&rarr;</i></a></li>
-      <li><a href="visor.html?view=ranking">
+        <span data-en="Trends">Evoluci&oacute;n</span><i class="ar" aria-hidden="true">&rarr;</i></a></li>
+      <li><a href="visor.html?view=ranking" data-view="ranking">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 7h6M4.5 12h11M4.5 17h15.5"/></svg>
-        <span>Ranking</span><i class="ar" aria-hidden="true">&rarr;</i></a></li>
-      <li><a href="visor.html?view=treemap">
+        <span data-en="Ranking">Ranking</span><i class="ar" aria-hidden="true">&rarr;</i></a></li>
+      <li><a href="visor.html?view=treemap" data-view="treemap">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v6.5H4zM13 4h7v11h-7zM4 12.5h7V20H4zM13 17h7v3h-7z"/></svg>
-        <span>Composici&oacute;n</span><i class="ar" aria-hidden="true">&rarr;</i></a></li>
-      <li><a class="q" href="visor.html?view=table">
+        <span data-en="Composition">Composici&oacute;n</span><i class="ar" aria-hidden="true">&rarr;</i></a></li>
+      <li><a class="q" href="visor.html?view=table" data-view="table">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z"/><path d="M4 9.6h16M4 14.3h16M9.3 5v14M14.7 5v14"/></svg>
-        <span>Tabla</span><i class="ar" aria-hidden="true">&rarr;</i></a></li>
-      <li><a class="q" href="visor.html?view=about">
+        <span data-en="Table">Tabla</span><i class="ar" aria-hidden="true">&rarr;</i></a></li>
+      <li><a class="q" href="visor.html?view=about" data-view="about">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.4M12 7.7h.01"/></svg>
-        <span>Acerca</span><i class="ar" aria-hidden="true">&rarr;</i></a></li>
+        <span data-en="About">Acerca</span><i class="ar" aria-hidden="true">&rarr;</i></a></li>
     </ul>
   </nav>
+  </div>
 
-  <div class="stage" id="stage"><canvas id="c" aria-hidden="true"></canvas></div>
+  <div class="stage" id="stage">
+    <div class="pane map" id="paneMap">
+      <canvas id="cm" aria-hidden="true"></canvas>
+      <div class="lab map"><b><span class="w-wide" data-en="People working the land by country">Personas que trabajan la tierra por pa&iacute;s</span><span class="w-narrow" data-en="Working the land, by country">Trabajan la tierra, por pa&iacute;s</span></b> &middot; <span data-en="millions">millones</span> &middot; <span class="yr" id="mapYear">2021</span></div>
+      <div class="legend" id="legend" aria-hidden="true">
+        <svg id="legendSvg" width="86" height="60" viewBox="0 0 86 60"></svg>
+        <div class="t"><span class="w-wide" data-en="Each circle, a country; area = people that year">Cada c&iacute;rculo, un pa&iacute;s; &aacute;rea = personas ese a&ntilde;o</span><span class="w-narrow" data-en="Circle = country; area = its people">C&iacute;rculo = pa&iacute;s; &aacute;rea = personas ese a&ntilde;o</span><i><span class="w-wide" data-en="annual data 1962&ndash;2021, no interpolation">datos anuales 1962&ndash;2021, sin interpolar</span><span class="w-narrow" data-en="annual data, no interpolation">datos anuales, sin interpolar</span></i></div>
+      </div>
+    </div>
+    <div class="pane chart" id="paneChart">
+      <canvas id="cc" aria-hidden="true"></canvas>
+      <div class="lab chart"><b><span class="w-wide" data-en="People working the land, world">Personas que trabajan la tierra en el mundo</span><span class="w-narrow" data-en="Working the land, world">Trabajan la tierra, mundo</span></b> &middot; <span data-en="millions">millones</span> &middot; 1962&ndash;2021</div>
+    </div>
+  </div>
+
+  <div class="time" id="time">
+    <button class="play" id="play" type="button" aria-label="Reproducir" data-en-label="Play" data-es-label="Reproducir" data-en-pause="Pause" data-es-pause="Pausa">
+      <svg class="ic-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12-7.5z"/></svg>
+      <svg class="ic-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 4.5h4v15h-4zM13.5 4.5h4v15h-4z"/></svg>
+    </button>
+    <div class="track">
+      <input type="range" id="slider" min="1962" max="2021" step="1" value="2021" aria-label="Año" data-en-label="Year" data-es-label="Año">
+      <div class="ticks" aria-hidden="true"><span>1962</span><span>1980</span><span>2000</span><span>2021</span></div>
+    </div>
+    <div class="bigyr" id="bigyr">2021<small data-en="year">a&ntilde;o</small></div>
+  </div>
+
+  <div class="chips" id="chips"><span class="l" data-en="Pin a country">Fija un pa&iacute;s</span></div>
 </main>
 
-<div class="tip" id="tip" aria-hidden="true"><b></b><s></s><i></i></div>
+<div class="tip" id="tip" aria-hidden="true"><b></b><s></s><i></i><u></u></div>
 
 <script src="portada/workers.js"></script>
 <script src="portada/geo-countries.js"></script>
 <script src="portada/world-110m.js"></script>
+<script src="portada/workers-v6.js"></script>
 <script>
 (function(){
 'use strict';
-var WK=window.WORKERS, GEO=window.GEO_COUNTRIES, TOPO=window.WORLD110;
-var canvas=document.getElementById('c'), stage=document.getElementById('stage');
-var bigEl=document.getElementById('big'), yearEl=document.getElementById('year');
-var tip=document.getElementById('tip'), tipB=tip.querySelector('b'), tipS=tip.querySelector('s'), tipI=tip.querySelector('i');
+var WK=window.WORKERS, GEO=window.GEO_COUNTRIES, TOPO=window.WORLD110, K6=window.WORKERS_V6||{};
+var stage=document.getElementById('stage'), paneMap=document.getElementById('paneMap'), paneChart=document.getElementById('paneChart');
+var cm=document.getElementById('cm'), cc=document.getElementById('cc');
+var bigEl=document.getElementById('big'), yearEl=document.getElementById('year'), mapYearEl=document.getElementById('mapYear');
+var bigyrEl=document.getElementById('bigyr'), slider=document.getElementById('slider'), playBtn=document.getElementById('play');
+var chipsEl=document.getElementById('chips'), ctaEl=document.getElementById('cta');
+var tip=document.getElementById('tip'), tipB=tip.querySelector('b'), tipS=tip.querySelector('s'), tipI=tip.querySelector('i'), tipU=tip.querySelector('u');
 var RM=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 var COARSE=!!(window.matchMedia&&window.matchMedia('(pointer:coarse)').matches);
 requestAnimationFrame(function(){document.body.classList.add('on','ready');});
-if(!WK||!canvas.getContext) return;
-var ctx=canvas.getContext('2d');
 
-/* ---------- ink ---------- */
-var LINO='#EBE2CF', LINO2='#EFE8D8', LAND='#E0C89A',
-    INK='#20211E', INK2='#4C4C44', INK3='#7B7869',
-    DRIL='#2C4A6E', DRIL2='#3E6A99', DRIL_RGB='44,74,110',
-    OCRE='#BE7A14', OCRE_D='#8E5A0B', OCRE_RGB='190,122,20';
-
-var fmt1=new Intl.NumberFormat('es-ES',{minimumFractionDigits:1,maximumFractionDigits:1});
-var fmt0=new Intl.NumberFormat('es-ES',{maximumFractionDigits:0});
-
-/* country names in Spanish, from the browser's own tables: alpha-3 -> alpha-2 */
-var A3A2='AFGAFAGOAOALBALAREAEARGARARMAMATGAGAUSAUAUTATAZEAZBDIBIBELBEBENBJBFABFBGDBDBGRBGBHRBHBHSBSBIHBABLRBYBLZBZBOLBOBRABRBRBBBBRNBNBTNBTBWABWCAFCFCANCACHECHCHLCLCHNCNCIVCICMRCMCODCDCOGCGCOLCOCOMKMCPVCVCRICRCUBCUCYPCYCZECZDEUDEDJIDJDMADMDNKDKDOMDODZADZECUECEGYEGERIERESPESESTEEETHETFINFIFJIFJFRAFRFSMFMGABGAGBRGBGEOGEGHAGHGINGNGMBGMGNBGWGNQGQGRCGRGRDGDGTMGTGUYGYHNDHNHRVHRHTIHTHUNHUIDNIDINDINIRLIEIRNIRIRQIQISLISISRILITAITJAMJMJORJOJPNJPKAZKZKENKEKGZKGKHMKHKIRKIKORKRKWTKWLAOLALBNLBLBRLRLBYLYLCALCLKALKLSOLSLTULTLUXLULVALVMARMAMDAMDMDGMGMDVMVMEXMXMKDMKMLIMLMLTMTMMRMMMNEMEMNGMNMOZMZMRTMRMUSMUMWIMWMYSMYNAMNANERNENGANGNICNINLDNLNORNONPLNPNZLNZOMNOMPAKPKPANPAPERPEPHLPHPNGPGPOLPLPRIPRPRKKPPRTPTPRYPYQATQAROUROSAUSASDNSDSENSNSGPSGSLBSBSLESLSLVSVSOMSOSRBRSSSDSSSTPSTSURSRSVKSKSVNSISWESESWZSZSYCSCSYRSYTCDTDTGOTGTHATHTJKTJTKMTMTLSTLTONTOTTOTTTUNTNTURTRTUVTVTWNTWTZATZUGAUGUKRUAURYUYUSAUSUZBUZVCTVCVENVEVNMVNVUTVUWSMWSYEMYEZAFZAZMBZMZWEZW';
+/* ================= idioma: la app no guarda idioma (usa ?lang=); la portada lo guarda en workers_lang ================= */
+var LANG_KEY='workers_lang', lang='es';
+(function(){
+  var q=null; try{ q=new URLSearchParams(location.search).get('lang'); }catch(e){}
+  var s=null; try{ s=localStorage.getItem(LANG_KEY); }catch(e){}
+  lang=(q==='en'||q==='es')?q:(s==='en'||s==='es')?s:'es';
+})();
+var S={
+  es:{ mill:'millones', M:' M', inYear:'en', world:'mundo', ofWorld:'% del total mundial', since:'en 1962', pin:'clic para fijar · su serie se dibuja abajo',
+       pinned:'fijado · clic para soltar', tapPin:'toca para fijar', tapPinned:'fijado · toca fuera para soltar', ownScale:'escala propia',
+       max:'máx.', year:'año', play:'Reproducir', pause:'Pausa', worldSeries:'trabajadores agrarios en el mundo',
+       reg:{Africa:'África',Americas:'América',Asia:'Asia',Europe:'Europa',Oceania:'Oceanía'}, chg:'desde 1962' },
+  en:{ mill:'million', M:' M', inYear:'in', world:'world', ofWorld:'% of world total', since:'in 1962', pin:'click to pin · its series is drawn below',
+       pinned:'pinned · click to release', tapPin:'tap to pin', tapPinned:'pinned · tap outside to release', ownScale:'own scale',
+       max:'max.', year:'year', play:'Play', pause:'Pause', worldSeries:'agricultural workers, world',
+       reg:{Africa:'Africa',Americas:'Americas',Asia:'Asia',Europe:'Europe',Oceania:'Oceania'}, chg:'since 1962' }
+};
+var T=S[lang], fmt1, fmt0, DN=null;
+function setFormats(){
+  fmt1=new Intl.NumberFormat(lang==='en'?'en-GB':'es-ES',{minimumFractionDigits:1,maximumFractionDigits:1});
+  fmt0=new Intl.NumberFormat(lang==='en'?'en-GB':'es-ES',{maximumFractionDigits:0});
+  try{ DN=new Intl.DisplayNames([lang],{type:'region'}); }catch(e){ DN=null; }
+}
+setFormats();
+/* alpha-3 -> alpha-2, para que el navegador ponga los nombres en cada idioma */
+var A3A2='AFGAFAGOAOALBALAREAEARGARARMAMATGAGAUSAUAUTATAZEAZBDIBIBELBEBENBJBFABFBGDBDBGRBGBHRBHBHSBSBIHBABLRBYBLZBZBOLBOBRABRBRBBBBRNBNBTNBTBWABWCAFCFCANCACHECHCHLCLCHNCNCIVCICMRCMCODCDCOGCGCOLCOCOMKMCPVCVCRICRCUBCUCYPCYCZECZDEUDEDJIDJDMADMDNKDKDOMDODZADZECUECEGYEGERIERESPESESTEEETHETFINFIFJIFJFRAFRFSMFMGABGAGBRGBGEOGEGHAGHGINGNGMBGMGNBGWGNQGQGRCGRGRDGDGTMGTGUYGYHNDHNHRVHRHTIHTHUNHUIDNIDINDINIRLIEIRNIRIRQIQISLISISRILITAITJAMJMJORJOJPNJPKAZKZKENKEKGZKGKHMKHKIRKIKORKRKWTKWLAOLALBNLBLBRLRLBYLYLCALCLKALKLSOLSLTULTLUXLULVALVMARMAMDAMDMDGMGMDVMVMEXMXMKDMKMLIMLMLTMTMMRMMMNEMEMNGMNMOZMZMRTMRMUSMUMWIMWMYSMYNAMNANERNENGANGNICNINLDNLNORNONPLNPNZLNZOMNOMPAKPKPANPAPERPEPHLPHPNGPGPOLPLPRIPRPRKKPPRTPTPRYPYQATQAROUROSAUSASDNSDSENSNSGPSGSLBSBSLESLSLVSVSOMSOSRBRSSSDSSSTPSTSURSRSVKSKSVNSISWESESWZSZSYCSCSYRSYTCDTDTGOTGTHATHTJKTJTKMTMTLSTLTONTOTTOTTTUNTNTURTRTUVTVTWNTWTZATZUGAUGUKRUAURYUYUSAUSUZBUZVCTVCVENVEVNMVNVUTVUWSMWSYEMYEZAFZAZMBZMZWEZWGUFGFHKGHKMACMOPYFPFKNAKN';
 var A2={}; (function(){for(var i=0;i+5<=A3A2.length;i+=5)A2[A3A2.substr(i,3)]=A3A2.substr(i+3,2);})();
-var DN=null;
-try{ DN=new Intl.DisplayNames(['es'],{type:'region'}); }catch(e){ DN=null; }
-function esName(iso,fallback){
+function cname(iso,fallback){
   var a2=A2[iso];
   if(DN&&a2){ try{ var n=DN.of(a2); if(n&&n!==a2) return n; }catch(e){} }
   return fallback;
 }
+function applyLang(){
+  T=S[lang]; setFormats();
+  document.documentElement.lang=lang;
+  var els=document.querySelectorAll('[data-en]'), i, el;
+  for(i=0;i<els.length;i++){ el=els[i];
+    if(!el.hasAttribute('data-es')) el.setAttribute('data-es',el.innerHTML);
+    el.innerHTML=lang==='en'?el.getAttribute('data-en'):el.getAttribute('data-es'); }
+  var lb=document.querySelectorAll('.lang button');
+  for(i=0;i<lb.length;i++) lb[i].setAttribute('aria-pressed',String(lb[i].getAttribute('data-lang')===lang));
+  slider.setAttribute('aria-label',slider.getAttribute('data-'+lang+'-label'));
+  document.title=lang==='en'?'Workers of the World · Agricultores del Mundo':'Agricultores del Mundo';
+  /* los enlaces llevan el idioma a la app, que lo lee de ?lang= */
+  var links=document.querySelectorAll('a[href^="visor.html"]');
+  for(i=0;i<links.length;i++){ var a=links[i], v=a.getAttribute('data-view'), h='visor.html', p=[];
+    if(v) p.push('view='+v); if(lang==='en') p.push('lang=en'); a.setAttribute('href',h+(p.length?'?'+p.join('&'):'')); }
+  cs.forEach(function(c){ c.name=cname(c.iso,c.enName); });
+  syncPlayLabel(); lastBig=''; lastYr=''; renderChips(true); draw(); tipRefresh();
+}
+document.querySelector('.lang').addEventListener('click',function(e){
+  var b=e.target.closest('button'); if(!b) return;
+  var l=b.getAttribute('data-lang'); if(l===lang) return;
+  lang=l; try{ localStorage.setItem(LANG_KEY,lang); }catch(err){}
+  applyLang();
+});
 
-/* ---------- series ---------- */
-var years=WK.years, wk=WK.world.workers, N=years.length;
-var Y0=years[0], Y1=years[N-1], firstVal=wk[0], lastVal=wk[N-1];
+if(!WK||!cm.getContext){ return; }
+var mctx=cm.getContext('2d'), cctx=cc.getContext('2d');
+
+/* ================= tinta ================= */
+var LINO='#EBE2CF', SEA='#EFE8D8', LAND='#E0C89A',
+    INK='#20211E', INK2='#4C4C44', INK3='#5C5749',
+    DRIL='#2C4A6E', DRIL_RGB='44,74,110', OCRE='#BE7A14', OCRE_D='#85520A', OCRE_RGB='190,122,20';
+
+/* ================= series ================= */
+var years=WK.years, wk=WK.world.workers, N=years.length, Y0=years[0], Y1=years[N-1];
 var peakIdx=0,i; for(i=1;i<N;i++) if(wk[i]>wk[peakIdx]) peakIdx=i;
 var peakYear=years[peakIdx], peakVal=wk[peakIdx];
+function valAt(arr,y){ var f=y-Y0, a=Math.floor(f), b=Math.min(N-1,a+1); if(a<0) return arr[0]; if(a>=N-1) return arr[N-1];
+  return arr[a]+(arr[b]-arr[a])*(f-a); }
 
-/* ---------- countries: the slices of the 2021 column ---------- */
-var EXTRA={ATG:[-61.8,17.1],BHR:[50.55,26.05],BRB:[-59.55,13.2],CPV:[-23.6,15.1],DMA:[-61.37,15.42],
-  GRD:[-61.68,12.12],KIR:[-157.4,1.87],KNA:[-62.75,17.3],LCA:[-60.98,13.9],MDV:[73.5,3.2],MLT:[14.4,35.9],
-  MUS:[57.55,-20.3],SGP:[103.8,1.35],STP:[6.7,0.25],VCT:[-61.2,13.25],WSM:[-172.1,-13.75]};
-var cs=[];
+/* ================= países ================= */
+var REG=K6.region_by_iso||{}, EXTRA=K6.centroids_extra||{};
+var cs=[], byIso={};
 Object.keys(WK.countries).forEach(function(iso){
-  var c=WK.countries[iso]; if(!c||!(c.workers_2021>0)) return;
+  var c=WK.countries[iso]; if(!c||!c.workers_series) return;
   var g=(GEO&&GEO[iso])?GEO[iso]:EXTRA[iso]; if(!g) return;
-  cs.push({iso:iso,name:esName(iso,c.name),w:c.workers_2021,w62:c.workers_1962,child:c.pct_child_2021,
-           hpw:c.hpw_2021,ser:c.workers_series||null,lon:g[0],lat:g[1],
-           ph:(iso.charCodeAt(0)*7+iso.charCodeAt(2)*13)%628/100});
+  var ser=c.workers_series, m=0,k; for(k=0;k<N;k++) if(ser[k]>m) m=ser[k];
+  var o={iso:iso,enName:c.name,name:cname(iso,c.name),ser:ser,serMax:m,region:REG[iso]||'',lon:g[0],lat:g[1],px:0,py:0,r:0};
+  cs.push(o); byIso[iso]=o;
 });
-cs.sort(function(a,b){return b.lat-a.lat;});              /* north at the head of the column */
-var NC=cs.length, totW=0, maxW=0, acc=0;
-cs.forEach(function(c){totW+=c.w; if(c.w>maxW) maxW=c.w;});
-cs.forEach(function(c,j){c.idx=j; c.cum0=acc; acc+=c.w; c.cum1=acc;
-  if(c.ser){ var m=0,k; for(k=0;k<c.ser.length;k++) if(c.ser[k]>m) m=c.ser[k]; c.serMax=m; }});
-var byIso={}; cs.forEach(function(c){byIso[c.iso]=c;});
+cs.sort(function(a,b){return b.serMax-a.serMax;});          /* los grandes debajo, los pequeños encima */
+var NC=cs.length, maxAll=0; cs.forEach(function(c){ if(c.serMax>maxAll) maxAll=c.serMax; });
+var SUG=['IND','ETH','CHN','NGA','ESP','BRA','IDN','RUS'].map(function(i){return byIso[i];}).filter(Boolean);
 
-// The attract loop labelled Ethiopia and Nigeria with '% child labour' while the other six
-// countries got a neutral measure. Nobody chose that, but the effect was that the only two
-// countries flagged for child labour on the cover were African. A rotating teaser has no room
-// for the context that figure needs, so every country now shows the same kind of measure: how
-// many people work the land, and how that number moved. Child and forced labour live inside the
-// viewer, where they carry their caveats.
-var HL=[{iso:'IND',k:'w'},{iso:'ETH',k:'w'},{iso:'CHN',k:'d'},{iso:'NGA',k:'w'},
-        {iso:'ESP',k:'d'},{iso:'BRA',k:'w'},{iso:'IDN',k:'w'},{iso:'RUS',k:'d'}].map(function(h){
-  var c=byIso[h.iso]; if(!c) return null;
-  var v = h.k==='w' ? fmt1.format(c.w/1e6)+' M de personas · '+Math.round(c.hpw)+' h al año'
-        : h.k==='c' ? fmt1.format(c.child)+' % de trabajo infantil'
-        : 'de '+fmt1.format(c.w62/1e6)+' M en 1962 a '+fmt1.format(c.w/1e6)+' M en 2021';
-  var sh = h.k==='w' ? fmt1.format(c.w/1e6)+' M de personas'
-        : h.k==='c' ? fmt1.format(c.child)+' % de trabajo infantil'
-        : fmt1.format(c.w62/1e6)+' M en 1962 → '+fmt1.format(c.w/1e6)+' M';
-  return {c:c,name:c.name,val:v,short:sh};
-}).filter(Boolean);
-
-/* ---------- TopoJSON decoded here: no library, works on file:// ---------- */
+/* ================= TopoJSON decodificado a mano (funciona en file://) ================= */
 var RAD=Math.PI/180;
-function ne1(lon,lat){                                    /* Natural Earth I */
-  var l=lon*RAD, p=lat*RAD, p2=p*p, p4=p2*p2;
+function ne1(lon,lat){ var l=lon*RAD, p=lat*RAD, p2=p*p, p4=p2*p2;
   return [l*(0.8707-0.131979*p2+p4*(-0.013791+p4*(0.003971*p2-0.001529*p4))),
-         -p*(1.007226+p2*(0.015085+p4*(-0.044475+0.028874*p2-0.005916*p4)))];
-}
-var landRings=[];
+         -p*(1.007226+p2*(0.015085+p4*(-0.044475+0.028874*p2-0.005916*p4)))]; }
+var M49=K6.m49_to_iso||{}, landRings=[];
 (function(){
   if(!TOPO||!TOPO.arcs) return;
   var sc=TOPO.transform?TOPO.transform.scale:[1,1], tr=TOPO.transform?TOPO.transform.translate:[0,0];
   var arcs=TOPO.arcs.map(function(a){var x=0,y=0,out=[],j;
-    for(j=0;j<a.length;j++){x+=a[j][0];y+=a[j][1];out.push([x*sc[0]+tr[0],y*sc[1]+tr[1]]);}
-    return out;});
+    for(j=0;j<a.length;j++){x+=a[j][0];y+=a[j][1];out.push([x*sc[0]+tr[0],y*sc[1]+tr[1]]);} return out;});
   function ring(ra){var pts=[],j,k,a2;
     for(j=0;j<ra.length;j++){var ix=ra[j]; a2=ix<0?arcs[~ix].slice().reverse():arcs[ix];
-      for(k=(pts.length?1:0);k<a2.length;k++) pts.push(a2[k]);}
-    return pts;}
+      for(k=(pts.length?1:0);k<a2.length;k++) pts.push(a2[k]);} return pts;}
   TOPO.objects.countries.geometries.forEach(function(g){
-    var id=String(g.id); if(id==='010'||id==='260') return;   /* no Antarctica */
-    var polys=g.type==='Polygon'?[g.arcs]:g.arcs;
-    polys.forEach(function(p){p.forEach(function(r,ri){ if(ri===0) landRings.push(ring(r)); });});
+    var id=String(g.id); if(id==='010'||id==='260') return;         /* sin Antártida */
+    var iso=M49[id]||null, polys=g.type==='Polygon'?[g.arcs]:g.arcs;
+    polys.forEach(function(p){p.forEach(function(r,ri){ if(ri===0) landRings.push({iso:iso,r:ring(r)}); });});
   });
 })();
-
-/* --- the antimeridian, done properly ---------------------------------------
-   Alaska, Chukotka and Fiji all straddle 180 degrees. A ring that steps from
-   +179 to -179 is not a jump on the globe but it IS a jump on a flat sheet, and
-   drawing it raw throws a band right across the ocean. So: unroll each ring so
-   its longitudes stay continuous, then clip it to [-180,180] with the shifted
-   copies it needs. What comes out is closed polygons, never open strokes.      */
-function unwrapRing(r){
-  var out=[[r[0][0],r[0][1]]], shift=0, prev=r[0][0], j, lon, l2;
-  for(j=1;j<r.length;j++){
-    lon=r[j][0];
-    if(lon+shift-prev>180) shift-=360;
-    else if(lon+shift-prev<-180) shift+=360;
-    l2=lon+shift; out.push([l2,r[j][1]]); prev=l2;
-  }
-  return out;
-}
-function clipHalf(poly,edge,keepGreater){
-  var out=[],n=poly.length,i,a,b,ia,ib,t;
-  if(n<3) return out;
-  for(i=0;i<n;i++){
-    a=poly[i]; b=poly[(i+1)%n];
-    ia = keepGreater ? (a[0]>=edge) : (a[0]<=edge);
-    ib = keepGreater ? (b[0]>=edge) : (b[0]<=edge);
+/* antimeridiano: desenrollar cada anillo y recortarlo a [-180,180] con las copias desplazadas que necesite */
+function unwrapRing(r){ var out=[[r[0][0],r[0][1]]], shift=0, prev=r[0][0], j, lon, l2;
+  for(j=1;j<r.length;j++){ lon=r[j][0]; if(lon+shift-prev>180) shift-=360; else if(lon+shift-prev<-180) shift+=360;
+    l2=lon+shift; out.push([l2,r[j][1]]); prev=l2; } return out; }
+function clipHalf(poly,edge,keepGreater){ var out=[],n=poly.length,i,a,b,ia,ib,t; if(n<3) return out;
+  for(i=0;i<n;i++){ a=poly[i]; b=poly[(i+1)%n];
+    ia=keepGreater?(a[0]>=edge):(a[0]<=edge); ib=keepGreater?(b[0]>=edge):(b[0]<=edge);
     if(ia) out.push(a);
-    if(ia!==ib && b[0]!==a[0]){
-      t=(edge-a[0])/(b[0]-a[0]);
-      out.push([edge, a[1]+(b[1]-a[1])*t]);
-    }
-  }
-  return out;
-}
+    if(ia!==ib&&b[0]!==a[0]){ t=(edge-a[0])/(b[0]-a[0]); out.push([edge,a[1]+(b[1]-a[1])*t]); } }
+  return out; }
 var landParts=[];
-landRings.forEach(function(r0){
-  if(!r0||r0.length<3) return;
-  var r=unwrapRing(r0), lo=Infinity, hi=-Infinity, j;
+landRings.forEach(function(o){
+  var r0=o.r; if(!r0||r0.length<3) return;
+  var r=unwrapRing(r0), lo=Infinity, hi=-Infinity, j, s;
   for(j=0;j<r.length;j++){ if(r[j][0]<lo) lo=r[j][0]; if(r[j][0]>hi) hi=r[j][0]; }
-  var s;
   for(s=-360;s<=360;s+=360){
     if(hi+s<-180.0001||lo+s>180.0001) continue;
     var moved=(s===0)?r:r.map(function(p){return [p[0]+s,p[1]];});
-    var q=clipHalf(clipHalf(moved,-180,true),180,false);
-    if(q.length<3) continue;
-    var a=0,k,n=q.length;                                  /* drop slivers of nothing */
-    for(k=0;k<n;k++){ var p1=q[k],p2=q[(k+1)%n]; a+=p1[0]*p2[1]-p2[0]*p1[1]; }
+    var q=clipHalf(clipHalf(moved,-180,true),180,false); if(q.length<3) continue;
+    var a=0,k,n=q.length; for(k=0;k<n;k++){ var p1=q[k],p2=q[(k+1)%n]; a+=p1[0]*p2[1]-p2[0]*p1[1]; }
     if(Math.abs(a)/2<0.004) continue;
-    landParts.push(q);
+    landParts.push({iso:o.iso,pts:q.map(function(p){return ne1(p[0],p[1]);})});
   }
 });
-var landRaw=landParts.map(function(r){return r.map(function(p){return ne1(p[0],p[1]);});});
-
-/* graticule and the outline of the world, generated, not fetched */
-var LAT_N=84, LAT_S=-58;                                  /* no Antarctica, no empty caps */
-var gratRaw=[],sphRaw=[],lo,la;
+var LAT_N=84, LAT_S=-58, gratRaw=[], sphRaw=[], lo, la;
 for(lo=-180;lo<=180;lo+=30){var m=[];for(la=LAT_S;la<=LAT_N;la+=2)m.push(ne1(lo,la));gratRaw.push(m);}
 for(la=-30;la<=60;la+=30){var q=[];for(lo=-180;lo<=180;lo+=5)q.push(ne1(lo,la));gratRaw.push(q);}
 (function(){var f=[];
-  for(la=LAT_N;la>=LAT_S;la-=2)f.push(ne1(180,la));
-  for(lo=180;lo>=-180;lo-=10)f.push(ne1(lo,LAT_S));
-  for(la=LAT_S;la<=LAT_N;la+=2)f.push(ne1(-180,la));
-  for(lo=-180;lo<=180;lo+=10)f.push(ne1(lo,LAT_N));
-  sphRaw=f;})();
-
+  for(la=LAT_N;la>=LAT_S;la-=2)f.push(ne1(180,la)); for(lo=180;lo>=-180;lo-=10)f.push(ne1(lo,LAT_S));
+  for(la=LAT_S;la<=LAT_N;la+=2)f.push(ne1(-180,la)); for(lo=-180;lo<=180;lo+=10)f.push(ne1(lo,LAT_N)); sphRaw=f;})();
 var lb=[Infinity,Infinity,-Infinity,-Infinity];
-sphRaw.forEach(function(p){
-  if(p[0]<lb[0])lb[0]=p[0]; if(p[1]<lb[1])lb[1]=p[1];
-  if(p[0]>lb[2])lb[2]=p[0]; if(p[1]>lb[3])lb[3]=p[1];});
+sphRaw.forEach(function(p){ if(p[0]<lb[0])lb[0]=p[0]; if(p[1]<lb[1])lb[1]=p[1]; if(p[0]>lb[2])lb[2]=p[0]; if(p[1]>lb[3])lb[3]=p[1];});
 
-/* ---------- layout ---------- */
-var W,H,dpr,mobile,pad,mk,mx,my,mapBot,colW,colX,yBase,yTop,xL,xR,rMax,mapLayer,keyR,keyRects;
-var monoF,monoS;
+/* ================= trazado ================= */
+var MW,MH,CW,CH,dpr,mobile,mk,mx,my,rMax,mapLayer,paths={},monoF;
+var xL,xR,yTop,yBase,y2Top,y2Base,padB;
 function P(p){return [mx+p[0]*mk, my+p[1]*mk];}
 function xs(y){return xL+(y-Y0)/(Y1-Y0)*(xR-xL);}
+function xToYear(x){ var y=Y0+(x-xL)/(xR-xL)*(Y1-Y0); return Math.max(Y0,Math.min(Y1,y)); }
 function ys(v){return yBase-(v/(peakVal*1.06))*(yBase-yTop);}
+function ys2(v){return y2Base-(v/(pinned.serMax*1.08))*(y2Base-y2Top);}
 function clamp01(v){return v<0?0:v>1?1:v;}
-function lerp(a,b,u){return a+(b-a)*u;}
-function eInOut(u){return u<.5?4*u*u*u:1-Math.pow(-2*u+2,3)/2;}
-function eOutQ(u){return 1-(1-u)*(1-u);}
+function rOf(w){ return Math.max(1.2,rMax*Math.sqrt(w/maxAll)); }
+function fmtV(v){ if(v>=1e6) return fmt1.format(v/1e6)+' M'; if(v>=1e3) return fmt0.format(v/1e3)+(lang==='en'?' k':' mil'); return fmt0.format(v); }
+function fmtParts(v){ if(v>=1e6) return [fmt1.format(v/1e6),T.M]; if(v>=1e3) return [fmt0.format(v/1e3),lang==='en'?' k':' mil']; return [fmt0.format(v),'']; }
 
 function layout(){
-  var r=stage.getBoundingClientRect();
-  W=Math.max(200,Math.round(r.width)); H=Math.max(200,Math.round(r.height));
+  var rm=paneMap.getBoundingClientRect(), rc=paneChart.getBoundingClientRect();
   dpr=Math.min(2,window.devicePixelRatio||1);
-  canvas.width=Math.round(W*dpr); canvas.height=Math.round(H*dpr); ctx.setTransform(dpr,0,0,dpr,0,0);
-  mobile=W<560;
-  monoF='500 '+(mobile?10:11.5)+'px "IBM Plex Mono", ui-monospace, Consolas, monospace';
-  monoS='400 '+(mobile?9.5:10.5)+'px "IBM Plex Mono", ui-monospace, Consolas, monospace';
-  pad={l:mobile?10:16,r:mobile?11:18,t:mobile?8:12,b:mobile?20:24};
-
-  yBase=H-pad.b-15;
-  colW=Math.max(6,Math.min(14,W*0.0092));
-  xL=pad.l; xR=W-pad.r-colW/2-1;
-  colX=xs(Y1);
-
-  var bw=lb[2]-lb[0], bh=lb[3]-lb[1];
-  var aw=W-pad.l-pad.r, ah=H*(mobile?0.46:0.47)-pad.t;
-  mk=Math.min(aw/bw,ah/bh);
-  mx=pad.l+(aw-bw*mk)/2-lb[0]*mk;
-  my=pad.t-lb[1]*mk;
-  mapBot=my+lb[3]*mk;
-  yTop=mapBot+(mobile?58:100);
-  rMax=Math.max(8,Math.min(32,aw*0.031));
-
-  var sliceH=yBase-ys(lastVal), top=ys(lastVal);
-  cs.forEach(function(c){
-    var p=P(ne1(c.lon,c.lat)); c.px=p[0]; c.py=p[1];
-    c.r=Math.max(1.1,rMax*Math.sqrt(c.w/maxW));
-    c.sy0=top+sliceH*(c.cum0/totW); c.sy1=top+sliceH*(c.cum1/totW);
-    c.sx=colX; c.syc=(c.sy0+c.sy1)/2;
-    var dx=c.px-c.sx, dy=c.py-c.syc, d=Math.sqrt(dx*dx+dy*dy);
-    c.cx=(c.sx+c.px)/2+dx*0.12; c.cy=Math.min(c.syc,c.py)-Math.min(120,d*0.20)-8;
-    c.t0=4.30+1.05*(c.idx/NC);
-  });
-  colTop=top;
-  keyR={x:pad.l+2,y:mapBot+(mobile?9:16)};
+  MW=Math.max(120,Math.round(rm.width)); MH=Math.max(120,Math.round(rm.height));
+  CW=Math.max(120,Math.round(rc.width)); CH=Math.max(90,Math.round(rc.height));
+  cm.width=Math.round(MW*dpr); cm.height=Math.round(MH*dpr); mctx.setTransform(dpr,0,0,dpr,0,0);
+  cc.width=Math.round(CW*dpr); cc.height=Math.round(CH*dpr); cctx.setTransform(dpr,0,0,dpr,0,0);
+  mobile=MW<560;
+  monoF='500 12px "IBM Plex Mono", ui-monospace, Consolas, monospace';
+  /* mapa: cabe entero, con aire para el rótulo arriba y la leyenda abajo */
+  var labM=document.querySelector('.lab.map').getBoundingClientRect().height||16,
+      labC=document.querySelector('.lab.chart').getBoundingClientRect().height||16;
+  var padT=Math.round(labM)+(mobile?10:14), padBm=mobile?40:44, padX=mobile?8:14;
+  fitMap(padT,padBm,padX); buildLegend();
+  if(mobile){ var lh=document.getElementById('legend').getBoundingClientRect().height||34; fitMap(padT,Math.round(lh)+8,padX); buildLegend(); }
+  /* serie */
+  padB=22; xL=mobile?10:16; xR=CW-(mobile?12:18); yTop=Math.round(labC)+(mobile?14:18); yBase=CH-padB;
+  splitChart();
   buildMap();
 }
-var colTop=0;
-
+function fitMap(padT,padBm,padX){
+  var bw=lb[2]-lb[0], bh=lb[3]-lb[1], aw=MW-2*padX, ah=MH-padT-padBm;
+  mk=Math.min(aw/bw,ah/bh);
+  mx=padX+(aw-bw*mk)/2-lb[0]*mk; my=padT+(ah-bh*mk)/2-lb[1]*mk;
+  rMax=Math.max(9,Math.min(44,bw*mk*0.052));
+  cs.forEach(function(c){ var p=P(ne1(c.lon,c.lat)); c.px=p[0]; c.py=p[1]; });
+}
+function splitChart(){
+  if(pinned){ var gap=mobile?28:36, h=CH-padB-yTop-gap, hw=Math.round(h*(mobile?0.5:0.56));
+    yBase=yTop+hw; y2Top=yBase+gap; y2Base=CH-padB; }
+  else { yBase=CH-padB; y2Top=y2Base=0; }
+}
 function buildMap(){
-  mapLayer=document.createElement('canvas');
-  mapLayer.width=canvas.width; mapLayer.height=canvas.height;
-  var m=mapLayer.getContext('2d'); m.setTransform(dpr,0,0,dpr,0,0);
-  m.lineJoin='round'; m.lineCap='round';
-  function trace(g,pts,close){var j,p=P(pts[0]);g.moveTo(p[0],p[1]);
-    for(j=1;j<pts.length;j++){p=P(pts[j]);g.lineTo(p[0],p[1]);} if(close)g.closePath();}
-  m.beginPath(); trace(m,sphRaw,true);
-  m.fillStyle=LINO2; m.fill();
+  mapLayer=document.createElement('canvas'); mapLayer.width=cm.width; mapLayer.height=cm.height;
+  var m=mapLayer.getContext('2d'); m.setTransform(dpr,0,0,dpr,0,0); m.lineJoin='round'; m.lineCap='round';
+  function trace(g,pts,close){var j,p=P(pts[0]);g.moveTo(p[0],p[1]);for(j=1;j<pts.length;j++){p=P(pts[j]);g.lineTo(p[0],p[1]);} if(close)g.closePath();}
+  m.beginPath(); trace(m,sphRaw,true); m.fillStyle=SEA; m.fill();
   m.strokeStyle='rgba('+DRIL_RGB+',.42)'; m.lineWidth=1.1; m.stroke();
-  m.strokeStyle='rgba('+DRIL_RGB+',.16)'; m.lineWidth=.75; m.beginPath();
-  gratRaw.forEach(function(l){trace(m,l,false);}); m.stroke();
-  m.beginPath(); landRaw.forEach(function(r){trace(m,r,true);});
-  m.fillStyle=LAND; m.fill('evenodd');
-  m.strokeStyle='rgba('+DRIL_RGB+',.50)'; m.lineWidth=.85; m.stroke();
-  /* the invariant the antimeridian fix has to hold: no edge crosses the ocean */
-  var maxE=0;
-  landRaw.forEach(function(r){var j,p0=P(r[0]),p1;
-    for(j=1;j<r.length;j++){p1=P(r[j]);var d=Math.abs(p1[0]-p0[0]);if(d>maxE)maxE=d;p0=p1;}
-    p1=P(r[0]); var d2=Math.abs(p1[0]-p0[0]); if(d2>maxE)maxE=d2;});
+  m.strokeStyle='rgba('+DRIL_RGB+',.16)'; m.lineWidth=.75; m.beginPath(); gratRaw.forEach(function(l){trace(m,l,false);}); m.stroke();
+  m.beginPath(); landParts.forEach(function(o){trace(m,o.pts,true);});
+  m.fillStyle=LAND; m.fill('evenodd'); m.strokeStyle='rgba('+DRIL_RGB+',.50)'; m.lineWidth=.85; m.stroke();
+  /* un Path2D por país para leer el polígono bajo el cursor */
+  paths={};
+  landParts.forEach(function(o){ if(!o.iso||!byIso[o.iso]) return;
+    var p=paths[o.iso]||(paths[o.iso]=new Path2D()), j, q=P(o.pts[0]); p.moveTo(q[0],q[1]);
+    for(j=1;j<o.pts.length;j++){ q=P(o.pts[j]); p.lineTo(q[0],q[1]); } p.closePath(); });
+  var maxE=0; landParts.forEach(function(o){var j,p0=P(o.pts[0]),p1;
+    for(j=1;j<o.pts.length;j++){p1=P(o.pts[j]);var d=Math.abs(p1[0]-p0[0]);if(d>maxE)maxE=d;p0=p1;}});
   window.__maxEdge=Math.round(maxE); window.__mapW=Math.round((lb[2]-lb[0])*mk);
 }
-
-/* ---------- pieces of the drawing ---------- */
-function valueAt(pd){
-  var f=pd*(N-1), a=Math.floor(f), b=Math.min(N-1,a+1);
-  return wk[a]+(wk[b]-wk[a])*(f-a);
-}
-function bez(p0,c,p1,u){var a=(1-u)*(1-u),b=2*(1-u)*u,d=u*u;
-  return [a*p0[0]+b*c[0]+d*p1[0], a*p0[1]+b*c[1]+d*p1[1]];}
-
-function chart(alpha,pd){
-  if(alpha<=0)return;
-  ctx.save(); ctx.globalAlpha=alpha; ctx.font=monoS; ctx.textBaseline='alphabetic';
-  var gl=mobile?[300e6,600e6,900e6]:[250e6,500e6,750e6], j, k;
-  var yf=Y0+(Y1-Y0)*pd, iM=Math.min(N-1,Math.floor(yf-Y0));
-  var val=valueAt(pd), penX=xs(yf), penY=ys(val);
-
-  if(pd>0){
-    ctx.beginPath(); ctx.moveTo(xL,yBase);
-    for(k=0;k<=iM;k++) ctx.lineTo(xs(years[k]),ys(wk[k]));
-    if(pd<1) ctx.lineTo(penX,penY);
-    ctx.lineTo(pd<1?penX:colX,yBase); ctx.closePath();
-    ctx.fillStyle='#D0DAE6'; ctx.fill();
-  }
-  ctx.lineWidth=1; ctx.strokeStyle='rgba('+DRIL_RGB+',.17)'; ctx.beginPath();
-  for(var y2=1970;y2<Y1;y2+=10){
-    if(yf<y2) continue;
-    var tx=Math.round(xs(y2))+.5; ctx.moveTo(tx,yBase); ctx.lineTo(tx,ys(wk[y2-Y0])+2);}
-  ctx.stroke();
-  for(j=0;j<gl.length;j++){
-    var gy=Math.round(ys(gl[j]))+.5;
-    ctx.strokeStyle='rgba(32,33,30,.22)'; ctx.beginPath();
-    ctx.moveTo(xL,gy); ctx.lineTo(colX+colW/2,gy); ctx.stroke();
-    ctx.fillStyle=INK2; ctx.textAlign='left'; ctx.fillText((gl[j]/1e6)+' M',xL+3,gy-4);
-  }
-  ctx.strokeStyle='rgba(32,33,30,.45)'; ctx.lineWidth=1; ctx.beginPath();
-  ctx.moveTo(xL,Math.round(yBase)+.5); ctx.lineTo(colX+colW/2,Math.round(yBase)+.5); ctx.stroke();
-  ctx.strokeStyle='rgba(32,33,30,.34)'; ctx.beginPath();
-  for(var y3=1970;y3<Y1;y3+=10){var t3=Math.round(xs(y3))+.5; ctx.moveTo(t3,yBase); ctx.lineTo(t3,yBase+4);}
-  ctx.stroke();
-  ctx.fillStyle=INK3; ctx.textAlign='left'; ctx.fillText(String(Y0),xL,yBase+14);
-  ctx.textAlign='right'; ctx.fillText(String(Y1),colX+colW/2,yBase+14);
-
-  if(pd>0){
-    ctx.beginPath();
-    for(k=0;k<=iM;k++){var lx=xs(years[k]),ly=ys(wk[k]); if(k===0)ctx.moveTo(lx,ly); else ctx.lineTo(lx,ly);}
-    if(pd<1) ctx.lineTo(penX,penY);
-    ctx.strokeStyle=DRIL; ctx.lineWidth=mobile?2:2.6; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.stroke();
-    if(pd<1){
-      ctx.strokeStyle='rgba('+DRIL_RGB+',.34)'; ctx.lineWidth=1;
-      ctx.beginPath(); ctx.moveTo(Math.round(penX)+.5,penY); ctx.lineTo(Math.round(penX)+.5,yBase); ctx.stroke();
-      ctx.fillStyle=OCRE; ctx.beginPath(); ctx.arc(penX,penY,3.4,0,6.2832); ctx.fill();
-      ctx.font=monoF; ctx.fillStyle=INK; ctx.textAlign='center'; ctx.fillText(String(Math.round(yf)),penX,yBase+14);
-    }
-    if(yf>=peakYear&&!mobile&&hoverYear===null){
-      var pa=clamp01((yf-peakYear)/2.2), px=xs(peakYear), py=ys(peakVal);
-      ctx.globalAlpha=alpha*pa;
-      ctx.strokeStyle='rgba(32,33,30,.40)'; ctx.lineWidth=1;
-      ctx.beginPath(); ctx.moveTo(px,py-5); ctx.lineTo(px,py-19); ctx.stroke();
-      ctx.fillStyle=OCRE_D; ctx.font=monoF; ctx.textAlign='center';
-      ctx.fillText('máximo '+fmt1.format(peakVal/1e6)+' M · '+peakYear,px,py-25);
-      ctx.globalAlpha=alpha;
-    }
-  }
-  ctx.restore(); ctx.globalAlpha=1;
+function buildLegend(){
+  var svg=document.getElementById('legendSvg'), vals=mobile?[150e6,5e6]:[150e6,50e6,5e6], rb=rOf(vals[0]), sc=1;
+  var Hh=Math.round(2*rb+12), base=Hh-3, cx=rb+2, lx=2*rb+12, s='';
+  vals.forEach(function(v){ var r=rOf(v)*sc, cy=base-r, top=cy-r;
+    s+='<circle cx="'+cx.toFixed(1)+'" cy="'+cy.toFixed(1)+'" r="'+r.toFixed(1)+'" fill="rgba('+DRIL_RGB+',.14)" stroke="'+DRIL+'" stroke-width="1"/>';
+    s+='<line x1="'+cx.toFixed(1)+'" y1="'+top.toFixed(1)+'" x2="'+(lx-3).toFixed(1)+'" y2="'+top.toFixed(1)+'" stroke="rgba('+DRIL_RGB+',.5)" stroke-width="1"/>';
+    s+='<text x="'+lx.toFixed(1)+'" y="'+(top+4).toFixed(1)+'" font-family="IBM Plex Mono,ui-monospace,monospace" font-size="12" fill="'+INK2+'">'+(v/1e6)+' M</text>'; });
+  var w=Math.round(lx+40); svg.setAttribute('width',w); svg.setAttribute('height',Hh); svg.setAttribute('viewBox','0 0 '+w+' '+Hh); svg.innerHTML=s;
 }
 
-/* --- the size key: circles on one baseline, labels clear of every disc ------ */
-function sizeKey(alpha){
-  if(alpha<=0)return;
-  var vals=mobile?[5e6,150e6]:[5e6,50e6,150e6], j, rr, x=keyR.x, y=keyR.y;
-  var rBig=Math.max(2,rMax*Math.sqrt(vals[vals.length-1]/maxW));
-  keyRects={circles:[],labels:[]};
-  ctx.save(); ctx.globalAlpha=alpha; ctx.font=monoS; ctx.textBaseline='middle';
-  {
-    /* concentric discs sharing a baseline, each label out to the right of its arc */
-    ctx.fillStyle=INK3; ctx.textAlign='left';
-    ctx.fillText(mobile?'Un país, un círculo · 2021':'Cada círculo, un país: trabajadores agrarios en 2021',x,y+5);
-    var cx2=x+3+rBig, base2=y+(mobile?12:16)+2*rBig, lx=x+3+2*rBig+11;
-    for(j=vals.length-1;j>=0;j--){
-      rr=Math.max(2,rMax*Math.sqrt(vals[j]/maxW));
-      var cy=base2-rr, top=cy-rr;
-      ctx.beginPath(); ctx.arc(cx2,cy,rr,0,6.2832);
-      ctx.fillStyle=(j===vals.length-1)?'rgba('+DRIL_RGB+',.13)':'rgba('+DRIL_RGB+',.16)'; ctx.fill();
-      ctx.strokeStyle='rgba('+DRIL_RGB+',.85)'; ctx.lineWidth=1; ctx.stroke();
-      ctx.strokeStyle='rgba('+DRIL_RGB+',.42)'; ctx.beginPath();
-      ctx.moveTo(cx2,top); ctx.lineTo(lx-4,top); ctx.stroke();
-      var lab2=(vals[j]/1e6)+' M';
-      ctx.fillStyle=INK2; ctx.textAlign='left'; ctx.fillText(lab2,lx,top);
-      keyRects.circles.push([cx2-rr,top,2*rr,2*rr]);
-      keyRects.labels.push([lx,top-6,ctx.measureText(lab2).width,12]);
-    }
-  }
-  ctx.restore(); ctx.globalAlpha=1;
+/* ================= estado del tiempo ================= */
+var yr=Y1, playing=false, intro=!RM, introT0=null, T_A=0.35, T_B=6.0, lastPlay=0, PLAY_RATE=6;
+var hover=null, pinned=null, probeYear=null, lastBig='', lastYr='', chipsYr=-1;
+function setYear(v,fromSlider){ yr=Math.max(Y0,Math.min(Y1,v)); if(!fromSlider){ var s=String(Math.round(yr)); if(slider.value!==s) slider.value=s; }
+  slider.style.setProperty('--fill',((yr-Y0)/(Y1-Y0)*100).toFixed(2)+'%'); }
+function stopIntro(){ if(intro){ intro=false; } }
+function play(on){ if(RM&&on) { on=true; } playing=on; document.body.classList.toggle('playing',playing); syncPlayLabel();
+  if(playing){ stopIntro(); if(yr>=Y1) setYear(Y0); lastPlay=performance.now(); tick(); } }
+function syncPlayLabel(){ playBtn.setAttribute('aria-label',playBtn.getAttribute('data-'+lang+(playing?'-pause':'-label'))); }
+playBtn.addEventListener('click',function(){ play(!playing); });
+slider.addEventListener('input',function(){ stopIntro(); play(false); setYear(+slider.value,true); hideTip(); draw(); });
+document.addEventListener('keydown',function(e){
+  var tg=e.target, tag=tg&&tg.tagName; if(tag==='INPUT'||tag==='BUTTON'||tag==='A'||tag==='TEXTAREA') return;
+  var d=0;
+  if(e.key==='ArrowRight') d=e.shiftKey?10:1; else if(e.key==='ArrowLeft') d=e.shiftKey?-10:-1;
+  else if(e.key===' '){ e.preventDefault(); play(!playing); return; }
+  else if(e.key==='Escape'){ unpin(); hideTip(); draw(); return; }
+  if(d){ e.preventDefault(); stopIntro(); play(false); setYear(Math.round(yr)+d); draw(); }
+});
+
+/* ================= dibujo ================= */
+var raf=null;
+function tick(){ if(raf) return; raf=requestAnimationFrame(frame); }
+var frames=0,fpsT0=0; window.__fps=0;
+function frame(now){ raf=null;
+  frames++; if(!fpsT0) fpsT0=now; if(now-fpsT0>=500){ window.__fps=Math.round(frames*1000/(now-fpsT0)); frames=0; fpsT0=now; }
+  var busy=false;
+  if(intro){ if(introT0===null) introT0=now; var t=(now-introT0)/1000;
+    if(t<T_A){ setYear(Y0); busy=true; }
+    else { var p=clamp01((t-T_A)/(T_B-T_A)); p=0.7*p+0.3*(-(Math.cos(Math.PI*p)-1)/2); setYear(Y0+(Y1-Y0)*p);
+      if(p>=1){ intro=false; setYear(Y1); } else busy=true; } }
+  else if(playing){ var dt=(now-lastPlay)/1000; lastPlay=now; var ny=yr+dt*PLAY_RATE;
+    if(ny>=Y1){ setYear(Y1); play(false); } else { setYear(ny); busy=true; } }
+  draw();
+  if(busy&&!document.hidden) raf=requestAnimationFrame(frame);
 }
+document.addEventListener('visibilitychange',function(){ if(!document.hidden){ lastPlay=performance.now(); if(intro) introT0=null; tick(); } });
 
-/* --- the column comes back at the end, as an index of the map --------------- */
-function residualColumn(alpha){
-  if(alpha<=0) return;
-  var x0=colX-colW/2, ci, c;
-  ctx.save(); ctx.globalAlpha=alpha;
-  for(ci=0;ci<NC;ci++){
-    c=cs[ci];
-    var h=Math.max(c.sy1-c.sy0,0.4), on=(hoverC===c);
-    ctx.fillStyle=on?'rgba('+OCRE_RGB+',.95)':'rgba('+DRIL_RGB+',.26)';
-    ctx.fillRect(x0,c.sy0,colW,on?Math.max(h,1.6):h);
-    if(h>2.4&&ci>0){ ctx.fillStyle='rgba(235,226,207,.75)'; ctx.fillRect(x0,c.sy0,colW,0.8); }
+function draw(){ if(!MW) return; drawMap(); drawChart(); drawText(); }
+function drawMap(){
+  var g=mctx; g.clearRect(0,0,MW,MH); g.fillStyle=LINO; g.fillRect(0,0,MW,MH);
+  if(mapLayer) g.drawImage(mapLayer,0,0,MW,MH);
+  var focus=hover||pinned, ci, c, w, r, dim=!!focus;
+  if(pinned&&paths[pinned.iso]){ g.fillStyle='rgba('+OCRE_RGB+',.22)'; g.fill(paths[pinned.iso],'evenodd'); }
+  if(hover&&hover!==pinned&&paths[hover.iso]){ g.fillStyle='rgba('+OCRE_RGB+',.14)'; g.fill(paths[hover.iso],'evenodd'); }
+  for(ci=0;ci<NC;ci++){ c=cs[ci]; w=valAt(c.ser,yr); r=rOf(w); c.r=r;
+    var on=(c===hover||c===pinned), a=dim?(on?0.92:0.30):0.72;
+    g.beginPath(); g.arc(c.px,c.py,r,0,6.2832);
+    g.fillStyle=on?'rgba('+OCRE_RGB+',.88)':'rgba('+DRIL_RGB+','+a.toFixed(2)+')'; g.fill();
+    if(r>1.8){ g.strokeStyle=on?OCRE_D:'rgba('+DRIL_RGB+','+(dim&&!on?0.30:0.95)+')'; g.lineWidth=1; g.stroke(); }
   }
-  ctx.strokeStyle='rgba('+DRIL_RGB+',.45)'; ctx.lineWidth=1;
-  ctx.strokeRect(Math.round(x0)+.5,Math.round(colTop)+.5,colW,Math.round(yBase-colTop));
-  ctx.restore(); ctx.globalAlpha=1;
+  if(focus){ g.strokeStyle=OCRE; g.lineWidth=1.8; g.beginPath(); g.arc(focus.px,focus.py,focus.r+4.5,0,6.2832); g.stroke();
+    if(pinned&&focus===pinned){ g.font='700 13px Archivo, Helvetica, Arial, sans-serif'; g.textBaseline='middle';
+      var lab=pinned.name+' · '+fmtV(valAt(pinned.ser,yr)), tw=g.measureText(lab).width;
+      var right=pinned.px+pinned.r+12+tw+8<MW-6, lx=right?pinned.px+pinned.r+12:pinned.px-pinned.r-12-tw, ly=pinned.py;
+      if(ly<26) ly=26; if(ly>MH-40) ly=MH-40;
+      g.fillStyle='rgba(244,237,224,.94)'; g.fillRect(lx-5,ly-11,tw+10,22);
+      g.strokeStyle='rgba('+OCRE_RGB+',.7)'; g.lineWidth=1; g.strokeRect(lx-4.5,ly-10.5,tw+9,21);
+      g.fillStyle=INK; g.textAlign='left'; g.fillText(lab,lx,ly); } }
 }
-
-/* --- what the cursor is asking about --------------------------------------- */
-function countryLine(c,alpha){
-  if(!c||!c.ser||!c.serMax) return;
-  var top=yTop+8, bot=yBase-2, k, n=c.ser.length, lx, ly;
-  ctx.save(); ctx.globalAlpha=alpha;
-  ctx.beginPath();
-  for(k=0;k<n;k++){
-    lx=xs(years[k]); ly=bot-(c.ser[k]/c.serMax)*(bot-top)*0.86;
-    if(k===0) ctx.moveTo(lx,ly); else ctx.lineTo(lx,ly);
+function drawChart(){
+  var g=cctx; g.clearRect(0,0,CW,CH); g.fillStyle=LINO; g.fillRect(0,0,CW,CH);
+  g.font=monoF; g.textBaseline='alphabetic'; var j,k;
+  var iM=Math.min(N-1,Math.floor(yr-Y0)), val=valAt(wk,yr), penX=xs(yr), penY=ys(val);
+  /* área hasta el año actual */
+  g.beginPath(); g.moveTo(xL,yBase); for(k=0;k<=iM;k++) g.lineTo(xs(years[k]),ys(wk[k])); g.lineTo(penX,penY); g.lineTo(penX,yBase); g.closePath();
+  g.fillStyle='#D0DAE6'; g.fill();
+  /* rejilla */
+  var gl=[250e6,500e6,750e6], cramped=(ys(250e6)-ys(500e6))<22;
+  for(j=0;j<gl.length;j++){ var gy=Math.round(ys(gl[j]))+.5; g.strokeStyle='rgba(32,33,30,.20)'; g.lineWidth=1;
+    g.beginPath(); g.moveTo(xL,gy); g.lineTo(xR,gy); g.stroke();
+    if(cramped&&j!==1) continue;
+    var gt=(gl[j]/1e6)+' M', gw=g.measureText(gt).width; g.fillStyle='rgba(235,226,207,.85)'; g.fillRect(xL+1,gy-15,gw+5,14);
+    g.fillStyle=INK2; g.textAlign='left'; g.fillText(gt,xL+3,gy-4); }
+  yearAxis(g,yBase,!pinned,penX);
+  /* serie completa en tenue, la dibujada hasta el año en firme */
+  g.beginPath(); for(k=0;k<N;k++){ if(k===0) g.moveTo(xs(years[k]),ys(wk[k])); else g.lineTo(xs(years[k]),ys(wk[k])); }
+  g.strokeStyle='rgba('+DRIL_RGB+',.22)'; g.lineWidth=1; g.stroke();
+  g.beginPath(); for(k=0;k<=iM;k++){ if(k===0) g.moveTo(xs(years[k]),ys(wk[k])); else g.lineTo(xs(years[k]),ys(wk[k])); } g.lineTo(penX,penY);
+  g.strokeStyle=DRIL; g.lineWidth=mobile?2:2.5; g.lineJoin='round'; g.lineCap='round'; g.stroke();
+  /* máximo */
+  if(yr>=peakYear&&!mobile){ var px=xs(peakYear), py=ys(peakVal);
+    g.strokeStyle='rgba(32,33,30,.40)'; g.lineWidth=1; g.beginPath(); g.moveTo(px,py-5); g.lineTo(px,py-17); g.stroke();
+    g.fillStyle=OCRE_D; g.textAlign='center'; g.fillText(T.max+' '+fmt1.format(peakVal/1e6)+' M · '+peakYear,px,py-22); }
+  /* cursor del año con su valor */
+  cursor(g,penX,penY,yBase,pinned?null:Math.round(yr),fmt1.format(val/1e6)+' M',DRIL);
+  /* panel del país fijado: misma x, escala propia */
+  if(pinned){ var c=pinned, top=y2Top, base=y2Base, lx, ly;
+    yearAxis(g,base,true,penX);
+    var gy2=Math.round(ys2(c.serMax))+.5; g.strokeStyle='rgba(32,33,30,.2)'; g.beginPath(); g.moveTo(xL,gy2); g.lineTo(xR,gy2); g.stroke();
+    var gt2=fmtV(c.serMax), gw2=g.measureText(gt2).width; g.fillStyle='rgba(235,226,207,.85)'; g.fillRect(xL+1,gy2-15,gw2+5,14);
+    g.fillStyle=INK2; g.textAlign='left'; g.fillText(gt2,xL+3,gy2-4);
+    g.beginPath(); g.moveTo(xL,base); for(k=0;k<=iM;k++) g.lineTo(xs(years[k]),ys2(c.ser[k])); var cv=valAt(c.ser,yr); g.lineTo(penX,ys2(cv)); g.lineTo(penX,base); g.closePath();
+    g.fillStyle='rgba('+OCRE_RGB+',.16)'; g.fill();
+    g.beginPath(); for(k=0;k<N;k++){ lx=xs(years[k]); ly=ys2(c.ser[k]); if(k===0) g.moveTo(lx,ly); else g.lineTo(lx,ly); }
+    g.strokeStyle='rgba('+OCRE_RGB+',.3)'; g.lineWidth=1; g.stroke();
+    g.beginPath(); for(k=0;k<=iM;k++){ lx=xs(years[k]); ly=ys2(c.ser[k]); if(k===0) g.moveTo(lx,ly); else g.lineTo(lx,ly); } g.lineTo(penX,ys2(cv));
+    g.strokeStyle=OCRE; g.lineWidth=mobile?1.8:2.2; g.stroke();
+    /* rótulo del panel: quién es y que la escala es suya */
+    g.font='700 13px Archivo, Helvetica, Arial, sans-serif'; g.fillStyle=INK; g.textAlign='left'; g.textBaseline='alphabetic';
+    var lab=c.name; g.fillText(lab,xL,top-10); var lw=g.measureText(lab).width;
+    g.font=monoF; g.fillStyle=OCRE_D; g.fillText(' · '+(lang==='en'?'millions':'millones')+' · '+T.ownScale,xL+lw,top-10);
+    cursor(g,penX,ys2(cv),base,Math.round(yr),fmtV(cv),OCRE_D);
   }
-  ctx.strokeStyle=OCRE; ctx.lineWidth=mobile?1.6:2; ctx.lineJoin='round'; ctx.lineCap='round';
-  ctx.setLineDash([]); ctx.stroke();
-  ctx.fillStyle=OCRE; ctx.beginPath(); ctx.arc(lx,ly,2.8,0,6.2832); ctx.fill();
-  ctx.font=monoS; ctx.fillStyle=OCRE_D; ctx.textAlign='right'; ctx.textBaseline='bottom';
-  ctx.fillText('escala propia',colX-2,top-1);
-  ctx.restore(); ctx.globalAlpha=1;
+  /* sonda del cursor sobre la serie (sin mover el año) */
+  if(probeYear!==null&&Math.round(probeYear)!==Math.round(yr)){ var hx=xs(probeYear);
+    g.strokeStyle='rgba(32,33,30,.35)'; g.lineWidth=1; g.setLineDash([2,3]); g.beginPath(); g.moveTo(Math.round(hx)+.5,yTop-4); g.lineTo(Math.round(hx)+.5,(pinned?y2Base:yBase)); g.stroke(); g.setLineDash([]);
+    g.fillStyle=OCRE; g.beginPath(); g.arc(hx,ys(wk[probeYear-Y0]),3.4,0,6.2832); g.fill();
+    if(pinned){ g.beginPath(); g.arc(hx,ys2(pinned.ser[probeYear-Y0]),3,0,6.2832); g.fill(); } }
 }
-
-/* ---------- script ---------- */
-var T_D0=0.35, T_D1=3.80, T_COL=3.80, T_FLY=4.30, FLY=1.50, T_END=7.30, T_HL=6.95, HL_P=3.0, T_RES=6.90;
-var lastBig='', lastYr='';
-var hoverC=null, hoverYear=null;
-
-function render(t){
-  ctx.clearRect(0,0,W,H);
-  ctx.fillStyle=LINO; ctx.fillRect(0,0,W,H);
-
-  var mapA=0.42+0.58*clamp01((t-(T_FLY-0.4))/1.5);
-  if(mapLayer){ctx.globalAlpha=mapA;ctx.drawImage(mapLayer,0,0,W,H);ctx.globalAlpha=1;}
-
-  var pd=clamp01((t-T_D0)/(T_D1-T_D0)); pd=0.55*pd+0.45*(-(Math.cos(Math.PI*pd)-1)/2);
-  chart(1,pd);
-
-  /* the 2021 column: one slice per country, north at the head */
-  var colA=clamp01((t-T_COL)/0.35), ci,c;
-  if(colA>0){
-    var hairA=clamp01((t-(T_COL+0.15))/0.4), x0=colX-colW/2;
-    for(ci=0;ci<NC;ci++){
-      c=cs[ci]; if(t>=c.t0) continue;
-      ctx.globalAlpha=colA; ctx.fillStyle=DRIL;
-      ctx.fillRect(x0,c.sy0,colW,Math.max(c.sy1-c.sy0,0.35));
-      if(hairA>0&&(c.sy1-c.sy0)>2.2&&ci>0){
-        ctx.globalAlpha=colA*hairA*0.85; ctx.fillStyle=LINO; ctx.fillRect(x0,c.sy0,colW,1);}
-    }
-    ctx.globalAlpha=1;
-  }
-
-  /* it unfolds: each slice flies to its place on the world */
-  var dim=(hoverC!==null);
-  for(ci=0;ci<NC;ci++){
-    c=cs[ci]; if(t<c.t0) continue;
-    var u=clamp01((t-c.t0)/FLY), e=eInOut(u);
-    var p=bez([c.sx,c.syc],[c.cx,c.cy],[c.px,c.py],e);
-    var r0=Math.max(0.6,Math.min(colW/2,(c.sy1-c.sy0)/2));
-    var rr=lerp(r0,c.r,eOutQ(u));
-    if(u>=1&&!RM&&!dim) rr*=1+0.03*Math.sin(t*1.9+c.ph);
-    if(u<1){
-      var pb=bez([c.sx,c.syc],[c.cx,c.cy],[c.px,c.py],eInOut(Math.max(0,u-0.07)));
-      ctx.strokeStyle='rgba('+DRIL_RGB+',.30)'; ctx.lineWidth=Math.max(0.8,rr*0.85); ctx.lineCap='round';
-      ctx.beginPath(); ctx.moveTo(pb[0],pb[1]); ctx.lineTo(p[0],p[1]); ctx.stroke();
-    }
-    var a = dim ? (c===hoverC?0.92:0.22) : (u<1?0.88:0.78);
-    ctx.beginPath(); ctx.arc(p[0],p[1],rr,0,6.2832);
-    ctx.fillStyle='rgba('+DRIL_RGB+','+a.toFixed(2)+')'; ctx.fill();
-    if(rr>1.8){ctx.strokeStyle='rgba('+DRIL_RGB+','+(dim&&c!==hoverC?0.28:0.95)+')'; ctx.lineWidth=1; ctx.stroke();}
-  }
-
-  sizeKey(clamp01((t-(T_FLY+0.5))/0.8));
-  residualColumn(0.92*clamp01((t-T_RES)/0.6));
-
-  /* the country under the cursor: ringed on the map, drawn on the series */
-  if(hoverC){
-    ctx.save();
-    ctx.strokeStyle=OCRE; ctx.lineWidth=1.8;
-    ctx.beginPath(); ctx.arc(hoverC.px,hoverC.py,hoverC.r+4.5,0,6.2832); ctx.stroke();
-    ctx.setLineDash([2,3]); ctx.strokeStyle='rgba('+OCRE_RGB+',.55)'; ctx.lineWidth=1;
-    ctx.beginPath(); ctx.moveTo(hoverC.px,hoverC.py+hoverC.r+5); ctx.lineTo(hoverC.px,mapBot); ctx.stroke();
-    ctx.setLineDash([]); ctx.restore();
-    countryLine(hoverC,0.95);
-  }
-
-  /* one country at a time says its figure, but only while nobody is asking */
-  if(HL.length&&!hoverC&&hoverYear===null&&(RM||t>=T_HL)){
-    var hi,ha;
-    if(RM){hi=0;ha=1;}
-    else{var th=t-T_HL; hi=Math.floor(th/HL_P)%HL.length; var phz=th-Math.floor(th/HL_P)*HL_P;
-      ha=Math.min(clamp01(phz/0.45),clamp01((HL_P-phz)/0.45));}
-    var h=HL[hi], cc=h.c, hv=(mobile&&h.short)?h.short:h.val;
-    ctx.save(); ctx.globalAlpha=ha;
-    ctx.strokeStyle=OCRE; ctx.lineWidth=1.6;
-    ctx.beginPath(); ctx.arc(cc.px,cc.py,cc.r+4,0,6.2832); ctx.stroke();
-    ctx.font='700 '+(mobile?12:14)+'px Archivo, Helvetica, Arial, sans-serif';
-    var nw=ctx.measureText(h.name).width;
-    ctx.font=monoS; var vw=ctx.measureText(hv).width;
-    var lw=Math.max(nw,vw), gap=cc.r+15;
-    var right=(cc.px+gap+lw+8<=W-pad.r), lx2=right?cc.px+gap:cc.px-gap, ly=cc.py-3;
-    if(ly-14<pad.t) ly=pad.t+18;
-    if(ly+15>mapBot) ly=mapBot-15;
-    var bx=right?lx2-6:lx2-lw-6;
-    if(bx<pad.l){ bx=pad.l; }
-    if(bx+lw+12>W-pad.r){ bx=Math.max(pad.l,W-pad.r-lw-12); }
-    lx2=bx+6;
-    ctx.strokeStyle='rgba(32,33,30,.45)'; ctx.lineWidth=1;
-    ctx.beginPath(); ctx.moveTo(right?cc.px+cc.r+4:cc.px-cc.r-4,cc.py); ctx.lineTo(right?bx:bx+lw+12,ly+3); ctx.stroke();
-    ctx.textAlign='left'; ctx.textBaseline='alphabetic';
-    ctx.fillStyle='rgba(239,232,216,.94)'; ctx.fillRect(bx,ly-14,lw+12,33);
-    ctx.strokeStyle='rgba('+DRIL_RGB+',.38)'; ctx.lineWidth=1;
-    ctx.strokeRect(bx+.5,ly-13.5,lw+11,32);
-    ctx.fillStyle=INK; ctx.font='700 '+(mobile?12:14)+'px Archivo, Helvetica, Arial, sans-serif';
-    ctx.fillText(h.name,lx2,ly);
-    ctx.fillStyle=OCRE_D; ctx.font=monoS; ctx.fillText(hv,lx2,ly+14);
-    ctx.restore(); ctx.globalAlpha=1;
-  }
-
-  /* the series answers too: a plumb line at the year under the cursor */
-  if(hoverYear!==null){
-    var hx=xs(hoverYear), hv=wk[hoverYear-Y0], hy=ys(hv);
-    ctx.save();
-    ctx.strokeStyle='rgba(32,33,30,.55)'; ctx.lineWidth=1;
-    ctx.beginPath(); ctx.moveTo(Math.round(hx)+.5,hy-6); ctx.lineTo(Math.round(hx)+.5,yBase); ctx.stroke();
-    ctx.fillStyle=OCRE; ctx.beginPath(); ctx.arc(hx,hy,3.6,0,6.2832); ctx.fill();
-    ctx.strokeStyle='rgba(32,33,30,.5)'; ctx.lineWidth=1; ctx.stroke();
-    if(hoverC&&hoverC.ser){
-      var top=yTop+8, bot=yBase-2;
-      var cy2=bot-(hoverC.ser[hoverYear-Y0]/hoverC.serMax)*(bot-top)*0.86;
-      ctx.fillStyle=OCRE_D; ctx.beginPath(); ctx.arc(hx,cy2,3,0,6.2832); ctx.fill();
-    }
-    ctx.font=monoF; ctx.fillStyle=INK; ctx.textAlign='center'; ctx.textBaseline='alphabetic';
-    ctx.fillText(String(hoverYear),hx,yBase+14);
-    ctx.restore();
-  }
-
-  /* the numeral in the column of text counts the series up, or reads the cursor */
-  var sv,sy;
-  if(hoverYear!==null){ sv=wk[hoverYear-Y0]; sy=hoverYear; }
-  else { sv=pd>=1?lastVal:valueAt(pd); sy=pd>=1?Y1:Math.round(Y0+(Y1-Y0)*pd); }
-  var b2=fmt1.format(sv/1e6); if(b2!==lastBig){bigEl.textContent=b2;lastBig=b2;}
-  var yv=String(sy); if(yv!==lastYr){yearEl.textContent=yv;lastYr=yv;}
+function yearAxis(g,base,labels,penX){
+  g.strokeStyle='rgba(32,33,30,.45)'; g.lineWidth=1; g.beginPath(); g.moveTo(xL,Math.round(base)+.5); g.lineTo(xR,Math.round(base)+.5); g.stroke();
+  g.strokeStyle='rgba(32,33,30,.34)'; g.beginPath();
+  for(var y3=1970;y3<Y1;y3+=10){ var t3=Math.round(xs(y3))+.5; g.moveTo(t3,base); g.lineTo(t3,base+4); } g.stroke();
+  if(!labels) return;
+  g.font=monoF; g.fillStyle=INK3; g.textBaseline='alphabetic';
+  if(penX-xL>34){ g.textAlign='left'; g.fillText(String(Y0),xL,base+15); }
+  if(xR-penX>34){ g.textAlign='right'; g.fillText(String(Y1),xR,base+15); }
+  g.textAlign='center'; for(var y4=1980;y4<=2000;y4+=20) if(Math.abs(xs(y4)-penX)>40) g.fillText(String(y4),xs(y4),base+15);
 }
+function cursor(g,x,y,base,yearLab,valLab,col){
+  g.strokeStyle='rgba(32,33,30,.5)'; g.lineWidth=1; g.beginPath(); g.moveTo(Math.round(x)+.5,y); g.lineTo(Math.round(x)+.5,base); g.stroke();
+  g.fillStyle=OCRE; g.beginPath(); g.arc(x,y,4,0,6.2832); g.fill(); g.strokeStyle='#fff'; g.lineWidth=1.5; g.stroke();
+  g.font=monoF; g.textBaseline='alphabetic';
+  var tw=g.measureText(valLab).width, left=x+8+tw+6>xR, bx=left?x-8-tw-6:x+8, top=(base===yBase)?yTop:y2Top;
+  var by=Math.max(top+6,Math.min(y-9,base-20));
+  g.fillStyle='rgba(244,237,224,.92)'; g.fillRect(bx-1,by-11,tw+8,16);
+  g.fillStyle=col; g.textAlign='left'; g.fillText(valLab,bx+3,by+1);
+  if(yearLab!==null){ g.fillStyle=INK; g.textAlign='center'; var yw=g.measureText(String(yearLab)).width+8;
+    g.fillStyle='rgba(235,226,207,.95)'; g.fillRect(x-yw/2,base+4,yw,14); g.fillStyle=INK; g.fillText(String(yearLab),x,base+15); }
+}
+function drawText(){
+  var Yi=Math.round(yr), v=valAt(wk,Yi), b2=fmt1.format(v/1e6);
+  if(b2!==lastBig){ bigEl.textContent=b2; lastBig=b2; }
+  var ys_=String(Yi); if(ys_!==lastYr){ yearEl.textContent=ys_; mapYearEl.textContent=ys_; bigyrEl.firstChild.nodeValue=ys_; lastYr=ys_; renderChips(false); }
+}
+function renderChips(rebuild){
+  var Yi=Math.round(yr); if(!rebuild&&Yi===chipsYr) return; chipsYr=Yi;
+  if(rebuild){ var old=chipsEl.querySelectorAll('.chip'); for(var i=0;i<old.length;i++) old[i].remove();
+    SUG.forEach(function(c){ var b=document.createElement('button'); b.type='button'; b.className='chip'; b.setAttribute('data-iso',c.iso);
+      b.innerHTML='<span></span><small></small>'; chipsEl.appendChild(b); }); }
+  var chips=chipsEl.querySelectorAll('.chip');
+  for(var j=0;j<chips.length;j++){ var c=byIso[chips[j].getAttribute('data-iso')]; if(!c) continue;
+    chips[j].firstChild.textContent=c.name; chips[j].lastChild.textContent=fmtV(valAt(c.ser,Yi))+' · '+Yi;
+    chips[j].setAttribute('aria-pressed',String(c===pinned)); }
+}
+chipsEl.addEventListener('click',function(e){ var b=e.target.closest('.chip'); if(!b) return;
+  var c=byIso[b.getAttribute('data-iso')]; if(!c) return; stopIntro();
+  if(pinned===c) unpin(); else pin(c); hideTip(); draw(); });
 
-/* ---------- clock, skip, resize ---------- */
-var t0=null,raf=null,hidAt=null,off=0,frames=0,fpsT0=0;
-window.__fps=0;
-function frame(now){raf=null; if(t0===null)t0=now;
-  frames++; if(!fpsT0) fpsT0=now;
-  if(now-fpsT0>=500){ window.__fps=Math.round(frames*1000/(now-fpsT0)); frames=0; fpsT0=now; }
-  render((now-t0)/1000+off);
-  if(!document.hidden) raf=requestAnimationFrame(frame);}
-function finish(){if(RM)return; var now=performance.now(); if(t0===null)t0=now;
-  var t=(now-t0)/1000+off; if(t<T_END) off+=T_END-t;}
-function nowT(){ if(RM) return T_END+0.01; if(t0===null) return 0; return (performance.now()-t0)/1000+off; }
-function start(){layout(); if(RM){render(T_END+0.01);return;} raf=requestAnimationFrame(frame);}
-document.addEventListener('visibilitychange',function(){if(RM)return;
-  if(document.hidden){if(raf){cancelAnimationFrame(raf);raf=null;}hidAt=performance.now();}
-  else{if(hidAt!==null&&t0!==null)t0+=performance.now()-hidAt; hidAt=null; if(!raf)raf=requestAnimationFrame(frame);}});
-var rt=null;
-function onResize(){clearTimeout(rt);rt=setTimeout(function(){clearHover();layout(); if(RM)render(T_END+0.01);},70);}
-window.addEventListener('resize',onResize); window.addEventListener('orientationchange',onResize);
-document.addEventListener('pointerdown',function(e){if(e.target.closest&&e.target.closest('a,button'))return;finish();});
-document.addEventListener('keydown',function(e){if(e.key==='Escape'){finish();clearHover();}});
-window.addEventListener('wheel',finish,{passive:true}); window.addEventListener('touchmove',finish,{passive:true});
-if(document.fonts&&document.fonts.ready) document.fonts.ready.then(function(){layout(); if(RM)render(T_END+0.01);});
-
-/* =======================================================================
-   Once the column has unfolded the plate answers back. The map and the
-   series are the same data, so touching one has to move the other.
-   ======================================================================= */
-function live(){ return RM || nowT()>=T_RES; }
-function showTip(name,fig,unit,detail,px,py){
-  tipB.textContent=name;
-  tipS.innerHTML='';
-  tipS.appendChild(document.createTextNode(fig));
+/* ================= espacio: cursor, toque, fijar ================= */
+function pin(c){ pinned=c; splitChart(); renderChips(true); }
+function unpin(){ if(!pinned) return; pinned=null; hover=null; splitChart(); renderChips(true); }
+function tipRefresh(){ if(tip.classList.contains('on')&&tipC) tellCountry(tipC,tipX,tipY); }
+var tipC=null,tipX=0,tipY=0;
+function showTip(name,fig,unit,detail,hint,px,py){
+  tipB.textContent=name; tipS.innerHTML=''; tipS.appendChild(document.createTextNode(fig));
   if(unit){ var em=document.createElement('em'); em.textContent=unit; tipS.appendChild(em); }
-  tipI.textContent=detail;
-  tip.classList.add('on');
+  tipI.textContent=detail; tipU.textContent=hint||''; tipU.style.display=hint?'block':'none';
+  tip.classList.add('on'); tipX=px; tipY=py;
   var r=tip.getBoundingClientRect(), w=r.width||200, h=r.height||76, x, y;
-  if(COARSE){
-    var sr=stage.getBoundingClientRect();
-    x=Math.min(Math.max(8,sr.left+8),Math.max(8,window.innerWidth-w-8));
-    y=(py>sr.top+sr.height/2)?sr.top+8:sr.bottom-h-8;
-  }else{
-    x=px+16; y=py-h-12;
-    if(x+w>window.innerWidth-8) x=px-w-16;
-    if(x<8) x=8;
-    if(y<8) y=py+20;
-  }
-  if(y+h>window.innerHeight-8) y=Math.max(8,window.innerHeight-h-8);
-  if(y<8) y=8;
+  if(COARSE){ var sr=paneMap.getBoundingClientRect();
+    x=Math.min(Math.max(8,sr.left+8),Math.max(8,window.innerWidth-w-8)); y=(py>sr.top+sr.height/2)?sr.top+30:sr.bottom-h-10; }
+  else { x=px+16; y=py-h-12; if(x+w>window.innerWidth-8) x=px-w-16; if(x<8) x=8; if(y<8) y=py+20; }
+  if(y+h>window.innerHeight-8) y=Math.max(8,window.innerHeight-h-8); if(y<8) y=8;
   tip.style.transform='translate('+Math.round(x)+'px,'+Math.round(y)+'px)';
 }
-function clearHover(){
-  if(!hoverC&&hoverYear===null) return;
-  hoverC=null; hoverYear=null; tip.classList.remove('on');
-  document.body.classList.remove('probing');
-  if(RM) render(T_END+0.01);
-}
+function hideTip(){ tip.classList.remove('on'); tipC=null; }
 function tellCountry(c,px,py){
-  var d=fmt1.format(c.w62/1e6)+' M en 1962 · '+Math.round(c.hpw)+' h al año';
-  if(c.child>0) d+=' · '+fmt1.format(c.child)+' % de trabajo infantil';
-  if(hoverYear!==null&&c.ser) d='en '+hoverYear+': '+fmt1.format(c.ser[hoverYear-Y0]/1e6)+' M · '+d;
-  showTip(c.name, fmt1.format(c.w/1e6), ' M en 2021', d, px, py);
+  var Yi=Math.round(yr), v=valAt(c.ser,Yi), wv=valAt(wk,Yi), share=v/wv*100, v62=c.ser[0];
+  var d=T.inYear+' '+Yi+(c.region?' · '+(T.reg[c.region]||c.region):'')+' · '+(share<0.05?'<0,1':fmt1.format(share))+' '+T.ofWorld+' · '+fmtV(v62)+' '+T.since;
+  var hint=(c===pinned)?(COARSE?T.tapPinned:T.pinned):(COARSE?T.tapPin:T.pin), fp=fmtParts(v);
+  tipC=c; showTip(c.name,fp[0],fp[1],d,hint,px,py);
 }
-function pick(lx,ly,px,py){
-  if(!live()) return;
-  document.body.classList.add('touched');
-  var hz=COARSE?20:6, ci, c;
-  /* the column that came back is an index: a row of it is a country */
-  if(lx>=colX-colW/2-hz && lx<=colX+colW/2+hz && ly>=colTop-6 && ly<=yBase+6){
-    var best=null,bd=1e9;
-    for(ci=0;ci<NC;ci++){ c=cs[ci];
-      if(ly>=c.sy0&&ly<=c.sy1){ best=c; break; }
-      var d=Math.abs((c.sy0+c.sy1)/2-ly); if(d<bd){bd=d;best=c;} }
-    if(best){ hoverC=best; hoverYear=null; document.body.classList.remove('probing');
-              tellCountry(best,px,py); if(RM) render(T_END+0.01); return; }
-  }
-  /* the map: the nearest disc that the cursor is actually near */
-  if(ly<=mapBot+10){
-    var pickR=COARSE?22:10, bc=null, bdist=1e9;
-    for(ci=0;ci<NC;ci++){ c=cs[ci];
-      var dx=c.px-lx, dy=c.py-ly, dd=Math.sqrt(dx*dx+dy*dy);
-      if(dd<=Math.max(c.r+pickR*0.5,pickR) && dd-c.r<bdist){ bdist=dd-c.r; bc=c; } }
-    if(bc){ hoverC=bc; hoverYear=null; document.body.classList.remove('probing');
-            tellCountry(bc,px,py); if(RM) render(T_END+0.01); return; }
-    if(hoverC||hoverYear!==null) clearHover();
+function tellYear(y,px,py){
+  var v=wk[y-Y0], d0=(v-wk[0])/wk[0]*100, d=T.worldSeries+' · '+(d0>=0?'+':'−')+fmt1.format(Math.abs(d0))+' % '+T.chg;
+  if(pinned) d=pinned.name+': '+fmtV(pinned.ser[y-Y0])+' · '+d;
+  tipC=null; showTip(String(y),fmt1.format(v/1e6),T.M,d,'',px,py);
+}
+function hitMap(lx,ly){
+  var pickR=COARSE?14:8, best=null, bd=1e9, ci, c;
+  for(ci=NC-1;ci>=0;ci--){ c=cs[ci]; var dx=c.px-lx, dy=c.py-ly, dd=Math.sqrt(dx*dx+dy*dy);
+    if(dd<=Math.max(c.r+pickR*0.5,pickR)&&dd-c.r<bd){ bd=dd-c.r; best=c; } }
+  if(best) return best;
+  var isos=Object.keys(paths), j;
+  for(j=0;j<isos.length;j++) if(mctx.isPointInPath(paths[isos[j]],lx*dpr,ly*dpr,'evenodd')) return byIso[isos[j]];
+  return null;
+}
+/* un gesto para las dos láminas: pulsar y arrastrar recorre los años; pasar y pulsar lee países */
+var drag=null;
+function localXY(e,el){ var r=el.getBoundingClientRect(); return [e.clientX-r.left,e.clientY-r.top]; }
+function onDown(e){
+  if(e.button!==undefined&&e.button!==0) return;
+  var isMap=(e.currentTarget===paneMap), p=localXY(e,e.currentTarget);
+  drag={x0:e.clientX,y0:e.clientY,yr0:yr,map:isMap,moved:false,el:e.currentTarget,px:e.clientX,py:e.clientY,lx:p[0],ly:p[1]};
+  try{ e.currentTarget.setPointerCapture(e.pointerId); }catch(err){}
+}
+function onMove(e){
+  var el=e.currentTarget, p=localXY(e,el), lx=p[0], ly=p[1];
+  if(drag&&drag.el===el&&(e.buttons&1||e.pointerType==='touch')){
+    var dx=e.clientX-drag.x0;
+    if(!drag.moved&&Math.abs(dx)>6&&Math.abs(dx)>Math.abs(e.clientY-drag.y0)*0.8){ drag.moved=true; stopIntro(); play(false); hideTip(); hover=null; document.body.classList.add('scrub'); }
+    if(drag.moved){ var ny=drag.map?drag.yr0+dx/(MW*0.85)*(Y1-Y0):xToYear(lx); setYear(Math.round(ny)); draw(); }
     return;
   }
-  /* the series: a year, read off the world total */
-  if(ly>=yTop-18 && ly<=yBase+18 && lx>=xL-4 && lx<=colX+colW){
-    var yr=Math.round(Y0+(lx-xL)/(xR-xL)*(Y1-Y0));
-    yr=Math.max(Y0,Math.min(Y1,yr));
-    hoverYear=yr; document.body.classList.add('probing');
-    if(hoverC) tellCountry(hoverC,px,py);
-    else{
-      var v=wk[yr-Y0], d0=(v-firstVal)/firstVal*100;
-      showTip(String(yr), fmt1.format(v/1e6), ' M', 'trabajadores agrarios en el mundo · '+
-        (d0>=0?'+':'−')+fmt1.format(Math.abs(d0))+' % desde 1962', px, py);
-    }
-    if(RM) render(T_END+0.01);
-    return;
-  }
-  clearHover();
+  if(COARSE) return;
+  if(el===paneMap){ var c=hitMap(lx,ly); probeYear=null;
+    if(c){ if(c!==hover){ hover=c; draw(); } tellCountry(c,e.clientX,e.clientY); paneMap.style.cursor='pointer'; }
+    else { paneMap.style.cursor=''; if(hover){ hover=null; draw(); } if(!pinned||tipC) hideTip(); }
+  } else { if(hover){ hover=null; drawMap(); }
+    if(ly>=yTop-16&&lx>=xL-6&&lx<=xR+6){ var y=Math.round(xToYear(lx)); if(y!==probeYear){ probeYear=y; drawChart(); } tellYear(y,e.clientX,e.clientY); }
+    else if(probeYear!==null){ probeYear=null; drawChart(); hideTip(); } }
 }
-var uiRaf=0, pend=null;
-function schedule(f){ pend=f; if(uiRaf) return;
-  uiRaf=requestAnimationFrame(function(){uiRaf=0;var g=pend;pend=null;if(g)g();}); }
-stage.addEventListener('pointermove',function(e){
-  var r=stage.getBoundingClientRect(), lx=e.clientX-r.left, ly=e.clientY-r.top,
-      px=e.clientX, py=e.clientY;
-  schedule(function(){ pick(lx,ly,px,py); });
+function onUp(e){
+  var el=e.currentTarget, d=drag; drag=null; document.body.classList.remove('scrub');
+  try{ el.releasePointerCapture(e.pointerId); }catch(err){}
+  if(!d||d.el!==el) return;
+  if(d.moved){ setYear(Math.round(yr)); draw(); return; }
+  stopIntro();
+  var p=localXY(e,el), lx=p[0], ly=p[1];
+  if(el===paneMap){ var c=hitMap(lx,ly);
+    if(c){ if(pinned===c){ unpin(); hover=COARSE?null:c; hideTip(); if(!COARSE) tellCountry(c,e.clientX,e.clientY); }
+           else { pin(c); hover=c; tellCountry(c,e.clientX,e.clientY); } }
+    else { unpin(); hideTip(); }
+    draw();
+  } else { if(ly>=yTop-16){ play(false); setYear(Math.round(xToYear(lx))); probeYear=null; if(COARSE) hideTip(); draw(); } }
+}
+function onLeave(e){ if(COARSE) return; if(drag) return;
+  if(e.currentTarget===paneMap){ if(hover){ hover=null; draw(); } paneMap.style.cursor=''; }
+  else if(probeYear!==null){ probeYear=null; drawChart(); }
+  hideTip();
+}
+[paneMap,paneChart].forEach(function(el){
+  el.addEventListener('pointerdown',onDown); el.addEventListener('pointermove',onMove);
+  el.addEventListener('pointerup',onUp); el.addEventListener('pointercancel',function(){ drag=null; document.body.classList.remove('scrub'); });
+  el.addEventListener('pointerleave',onLeave);
 });
-stage.addEventListener('pointerdown',function(e){
-  var r=stage.getBoundingClientRect(), lx=e.clientX-r.left, ly=e.clientY-r.top,
-      px=e.clientX, py=e.clientY;
-  setTimeout(function(){ pick(lx,ly,px,py); },40);
-},{passive:true});
-stage.addEventListener('pointerleave',function(){ if(!COARSE) clearHover(); });
-document.addEventListener('pointerdown',function(e){
-  if(e.target.closest&&e.target.closest('#stage')) return;
-  clearHover();
-},{passive:true});
+document.addEventListener('pointerdown',function(e){ if(e.target.closest&&e.target.closest('#stage,.chip,.tip')) return;
+  if(COARSE&&tip.classList.contains('on')){ hideTip(); } },{passive:true});
+window.addEventListener('wheel',stopIntro,{passive:true});
 
-window.__keyRects=function(){ return keyRects; };
-window.__probe=function(){ return {fps:window.__fps,maxEdge:window.__maxEdge,mapW:window.__mapW,
-                                   hover:hoverC?hoverC.iso:null,year:hoverYear,nc:NC,parts:landRaw.length}; };
-start();
+/* ================= arranque ================= */
+var rt=null;
+function onResize(){ clearTimeout(rt); rt=setTimeout(function(){ hideTip(); layout(); draw(); },80); }
+window.addEventListener('resize',onResize); window.addEventListener('orientationchange',onResize);
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(function(){ layout(); draw(); });
+applyLang();
+layout(); setYear(RM?Y1:Y0); renderChips(true);
+if(RM){ intro=false; setYear(Y1); draw(); } else tick();
+
+window.__probe=function(){ return {fps:window.__fps,maxEdge:window.__maxEdge,mapW:window.__mapW,year:Math.round(yr),intro:intro,playing:playing,
+  hover:hover?hover.iso:null,pinned:pinned?pinned.iso:null,nc:NC,parts:landParts.length,paths:Object.keys(paths).length,lang:lang}; };
+window.__pos=function(iso){ var c=byIso[iso]; if(!c) return null; var r=paneMap.getBoundingClientRect(); return [r.left+c.px,r.top+c.py,c.r]; };
+window.__set=function(o){ if(o.year!==undefined){ stopIntro(); play(false); setYear(o.year); } if(o.pin!==undefined){ o.pin?pin(byIso[o.pin]):unpin(); } draw(); };
 })();
 </script>
 </body>
