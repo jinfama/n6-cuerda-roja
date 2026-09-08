@@ -464,7 +464,7 @@ function drawChart(allSeries, metric, category) {
     .call(g => g.selectAll('text').attr('fill', MUTE).style('font-size', '12px'))
     .call(g => g.selectAll('line, path').attr('stroke', RULE));
   root.append('g')
-    .call(d3.axisLeft(y).tickValues(valueTicks(yDomain[0], yDomain[1])).tickFormat(v => formatTick(v)))
+    .call(d3.axisLeft(y).tickValues(valueTicks(yDomain[0], yDomain[1])).tickFormat(axisTickFormat(valueTicks(yDomain[0], yDomain[1]))))
     .call(g => g.selectAll('text').attr('fill', INK).style('font-size', '12px'))
     .call(g => g.selectAll('line, path').attr('stroke', RULE));
 
@@ -618,9 +618,10 @@ function drawFacetedChart(allSeries, metric, category, W, H) {
       .style('font-size', '11px').style('font-weight', '700')
       .text(group.title.length > 28 ? `${group.title.slice(0, 26)}...` : group.title);
 
+    const cellTicks = facetTicks(yDomain[0], yDomain[1], ih);
     root.append('g')
       .attr('class', 'trend-grid')
-      .call(d3.axisLeft(y).tickValues(valueTicks(yDomain[0], yDomain[1]).slice(0, 3)).tickSize(-iw).tickFormat(''))
+      .call(d3.axisLeft(y).tickValues(cellTicks).tickSize(-iw).tickFormat(''))
       .call(g => g.selectAll('line').attr('stroke', GRID).attr('stroke-dasharray', '2 4'))
       .call(g => g.select('path').remove());
     if (!oneYear) {
@@ -630,7 +631,7 @@ function drawFacetedChart(allSeries, metric, category, W, H) {
         .call(g => g.selectAll('line, path').attr('stroke', RULE));
     }
     root.append('g')
-      .call(d3.axisLeft(y).tickValues(valueTicks(yDomain[0], yDomain[1]).slice(0, 3)).tickFormat(v => formatTick(v)))
+      .call(d3.axisLeft(y).tickValues(cellTicks).tickFormat(axisTickFormat(cellTicks)))
       .call(g => g.selectAll('text').attr('fill', MUTE).style('font-size', '10.5px'))
       .call(g => g.selectAll('line, path').attr('stroke', RULE));
 
@@ -713,17 +714,22 @@ function drawFacetedChart(allSeries, metric, category, W, H) {
 
 function drawFacetLegend(root, series, innerWidth) {
   if (series.length < 2 || series.length > 6) return;
-  const itemW = Math.max(68, Math.min(118, innerWidth / Math.min(series.length, 4)));
+  // Items take the room the panel gives them: on a full-width facet the four footprint
+  // flows used to print as "Huella de ho...", "Horas import..." at 118 px per item.
+  // Narrow panels (phones) take two items per row instead of clipping four.
+  const perRow = innerWidth < 420 ? 2 : Math.min(series.length, 4);
+  const itemW = Math.max(68, Math.min(220, innerWidth / perRow));
+  const maxChars = Math.max(10, Math.floor((itemW - 22) / 5.6));
   const legend = root.append('g')
     .attr('class', 'trend-facet-legend')
     .attr('transform', 'translate(2,6)');
   series.forEach((s, i) => {
-    const row = Math.floor(i / 4);
-    const col = i % 4;
+    const row = Math.floor(i / perRow);
+    const col = i % perRow;
     const x = col * itemW;
-    const y = row * 13;
+    const y = row * 14;
     const label = s.lineLabel || s.country || s.iso;
-    const shortLabel = label.length > 14 ? `${label.slice(0, 12)}...` : label;
+    const shortLabel = label.length > maxChars ? `${label.slice(0, maxChars - 2)}...` : label;
     const item = legend.append('g').attr('transform', `translate(${x},${y})`);
     item.append('line')
       .attr('x1', 0).attr('x2', 12)
@@ -734,7 +740,7 @@ function drawFacetLegend(root, series, innerWidth) {
     item.append('text')
       .attr('x', 16).attr('y', 3)
       .attr('fill', MUTE)
-      .style('font-size', '8.5px')
+      .style('font-size', '9.5px')
       .style('font-weight', '650')
       .text(shortLabel)
       .append('title')
@@ -781,7 +787,7 @@ function drawSingleYearBars(rangedSeries, metric, category, W, H, year) {
     .call(g => g.selectAll('text').attr('fill', MUTE).style('font-size', '11px'))
     .call(g => g.selectAll('line, path').attr('stroke', RULE));
   root.append('g')
-    .call(d3.axisLeft(y).tickValues(valueTicks(yDomain[0], yDomain[1])).tickFormat(v => formatTick(v)))
+    .call(d3.axisLeft(y).tickValues(valueTicks(yDomain[0], yDomain[1])).tickFormat(axisTickFormat(valueTicks(yDomain[0], yDomain[1]))))
     .call(g => g.selectAll('text').attr('fill', INK).style('font-size', '12px'))
     .call(g => g.selectAll('line, path').attr('stroke', RULE));
 
@@ -923,11 +929,37 @@ function valueTicks(min, max) {
   return [...new Set([min, ...middle.filter(v => v > min && v < max), max])];
 }
 
+// A facet panel can be 60 px tall or 650 px tall. Three labels on the tall one read as a
+// broken axis (the labour-footprint facet printed 0, 2.0B, 4.0B and nothing above); seven
+// on the short one pile up. Pick by height, always keeping the minimum first.
+function facetTicks(min, max, innerHeight) {
+  const all = valueTicks(min, max);
+  if (innerHeight >= 300) return all;
+  return all.slice(0, innerHeight >= 150 ? 4 : 3);
+}
+
+// Axis labels share one format derived from the tick step, so adjacent ticks never print
+// the same string. With two fixed decimals the productivity axis read 0.02, 0.01, 0.01,
+// 0.01, 0 (ticks 0.005 apart); with the step-derived count it reads 0.020 ... 0.005, 0.
+function axisTickFormat(ticks) {
+  const vals = ticks.filter(v => v != null && isFinite(v)).sort((a, b) => a - b);
+  let step = Infinity;
+  for (let i = 1; i < vals.length; i++) { const d = vals[i] - vals[i - 1]; if (d > 0 && d < step) step = d; }
+  const maxAbs = vals.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
+  const [div, suffix] = maxAbs >= 1e9 ? [1e9, 'B'] : maxAbs >= 1e6 ? [1e6, 'M'] : maxAbs >= 1e3 ? [1e3, 'k'] : [1, ''];
+  const stepU = isFinite(step) ? step / div : 1;
+  let dec = 0;
+  while (dec < 6 && Math.abs(stepU * 10 ** dec - Math.round(stepU * 10 ** dec)) > 1e-6 * 10 ** dec) dec++;
+  return v => (v == null || !isFinite(v)) ? '' : d3.format(`,.${dec}f`)(v / div) + suffix;
+}
+
 function formatTick(v) {
   const abs = Math.abs(v);
   if (abs >= 1e9) return (v / 1e9).toFixed(abs < 10e9 ? 1 : 0) + 'B';
   if (abs >= 1e6) return (v / 1e6).toFixed(abs < 10e6 ? 1 : 0) + 'M';
   if (abs >= 1e3) return (v / 1e3).toFixed(abs < 10e3 ? 1 : 0) + 'k';
+  // Below 1 the old ',.2~f' printed 0.0036 t/h as "0": keep three significant digits.
+  if (abs > 0 && abs < 1) return Number(v.toPrecision(3)).toString();
   return d3.format(',.2~f')(v);
 }
 

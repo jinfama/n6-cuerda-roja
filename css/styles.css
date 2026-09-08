@@ -4,8 +4,11 @@
    ============================================================ */
 
 :root {
-  /* Chrome palette - taken from the approved cover
-     07_temp/portadas_visores_2026-09/workers/V5_columna-desdoblada.html:
+  /* Chrome palette = the cover's palette. Rule since the V7 cover (2026-09-08): the
+     :root of index.html (V7, "la columna que llueve", same lino/dril/ocre as the approved
+     V5 07_temp/portadas_visores_2026-09/workers/V5_columna-desdoblada.html) is the source;
+     these tokens mirror it one to one (lino #EBE2CF, paper #F4EDE0, ink #20211E/#4C4C44/
+     #5C5749, dril #2C4A6E/#1B2F47, ocre #BE7A14/#85520A/#DE9E2C, mono labels IBM Plex Mono).
      lino (papel tostado) + dril (azul pizarra profundo) + ocre (laton).
      Cover tokens: lino #EBE2CF / #E1D6BE / #D6C9AC, ink #20211E / #4C4C44 / #7B7869,
      dril #2C4A6E / #3E6A99 / #1B2F47, ocre #BE7A14 / #8E5A0B / #DE9E2C,
@@ -1045,6 +1048,10 @@ a { color: inherit; text-decoration: none; }
   font-size: 11px;
   color: var(--c-text-2);
 }
+/* On wide frames the map is fitted to the right of a 372 px column (map.js
+   TRADE_LEGEND_COLUMN) that holds this legend, so the legend must stay inside it. */
+.map-container.has-trade-controls .map-legend { max-width: 336px; }
+.map-flow-row > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .map-flow-row strong {
   color: var(--c-text);
   font-weight: 600;
@@ -3198,6 +3205,9 @@ a { color: inherit; text-decoration: none; }
     font-size: 10px;
     background: rgba(243,236,222,0.90);
   }
+  /* The strip is a scrolling flex column: without this its children shrank to fit the
+     max-height and the title of the trade legend printed as a clipped half line. */
+  .map-legend > * { flex-shrink: 0; }
   .map-legend-title {
     font-size: 9px;
     margin-bottom: 2px;

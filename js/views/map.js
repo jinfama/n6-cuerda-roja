@@ -339,6 +339,21 @@ export async function initMapView() {
   window.addEventListener('resize', () => { resize(); drawCountries(); paint(); });
 }
 
+// The bilateral-trade legend (class strip + top-10 list) is ~330 px wide and ~350 px tall.
+// On a wide frame it sat on an opaque plate over Ecuador, Peru and Colombia (checked on the
+// 2026-09-08 captures). On frames of 900 px and more the map now fits to the right of a
+// reserved left column that holds the caption and that legend: the map is smaller in that
+// view, but it is whole. Below 900 px (and on phones, where the legend is a strip under the
+// map) the fit is unchanged.
+const TRADE_LEGEND_COLUMN = 372;
+let _fitLeftPad = null;
+
+function tradeLegendColumn(W, mobile) {
+  if (mobile || W < 900) return null;
+  const ind = getIndicator(State.get('activeCategory'), State.get('activeIndicator'));
+  return ind && ind.source === 'bilateral_trade' ? TRADE_LEGEND_COLUMN : null;
+}
+
 function resize() {
   const container = document.getElementById('map-container');
   const W = container.clientWidth;
@@ -347,11 +362,27 @@ function resize() {
   const mobile = W <= 700;
   const topPad = mobile ? 54 : 24;
   const bottomPad = mobile ? Math.min(150, Math.max(108, H * 0.18)) : 22;
+  const leftPad = tradeLegendColumn(W, mobile) ?? (mobile ? 10 : 20);
+  _fitLeftPad = leftPad;
   const geo = _countries && _countries.length
     ? { type: 'FeatureCollection', features: _countries }
     : { type: 'Sphere' };
-  _projection = d3.geoNaturalEarth1().fitExtent([[mobile ? 10 : 20, topPad], [W - (mobile ? 10 : 20), H - bottomPad]], geo);
+  _projection = d3.geoNaturalEarth1().fitExtent([[leftPad, topPad], [W - (mobile ? 10 : 20), H - bottomPad]], geo);
   _path = d3.geoPath(_projection);
+}
+
+// Switching into or out of the trade layer changes the reserved column, so the
+// projection has to be refitted and the country paths redrawn before painting.
+function syncProjectionToLayer() {
+  const container = document.getElementById('map-container');
+  if (!container || !_countries) return;
+  const W = container.clientWidth;
+  const mobile = W <= 700;
+  const wanted = tradeLegendColumn(W, mobile) ?? (mobile ? 10 : 20);
+  if (wanted === _fitLeftPad) return;
+  resize();
+  drawCountries();
+  paintSelection();
 }
 
 function drawCountries() {
@@ -445,6 +476,7 @@ async function paint() {
   const ind = getIndicator(State.get('activeCategory'), State.get('activeIndicator'));
   const metric = resolveMetric(ind, State.get('language'));
   if (!metric) return;
+  syncProjectionToLayer();
   if (metric.source === 'bilateral_trade') {
     await paintTradeMap(metric);
     return;
